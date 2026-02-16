@@ -2,6 +2,7 @@ import { BrowserRouter, Route, Routes, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { Login } from './pages/Login';
+import { SignUp } from './pages/SignUp';
 import { Dashboard } from './pages/Dashboard';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -41,6 +42,12 @@ function App() {
                     <Route path="/login" element={
                         <PublicRoute>
                             <Login />
+                        </PublicRoute>
+                    } />
+
+                    <Route path="/signup" element={
+                        <PublicRoute>
+                            <SignUp />
                         </PublicRoute>
                     } />
 

@@ -5,10 +5,16 @@
 @layer base {
   body {
     @apply font-sans antialiased text-slate-800 bg-slate-50;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 }
 
-/* Custom scrollbar for webkit */
+/* Premium Selection */
+::selection {
+  @apply bg-slate-900 text-white;
+}
+
+/* Premium Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -17,8 +23,31 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-slate-200 rounded-full;
+  @apply bg-slate-300/50 rounded-full transition-colors hover:bg-slate-400/80;
 }
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-slate-300;
+
+/* Utilities for Glassmorphism & Gradients */
+@layer utilities {
+  .glass {
+    @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-sm;
+  }
+  .glass-dark {
+    @apply bg-slate-900/80 backdrop-blur-md border border-slate-800/50 shadow-sm;
+  }
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+  .animate-slide-up {
+    animation: slideUp 0.5s ease-out forwards;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
