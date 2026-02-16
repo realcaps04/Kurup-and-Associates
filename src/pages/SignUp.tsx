@@ -9,7 +9,6 @@ import { useNavigate, Link } from 'react-router-dom';
 export function SignUp() {
     const [formData, setFormData] = useState({
         fullName: '',
-        employeeId: '',
         phoneNumber: '',
         email: '',
         password: '',
@@ -50,27 +49,30 @@ export function SignUp() {
 
             if (authData.user) {
                 // 2. Create Clerk User Profile
+                // Auto-generate employee ID (e.g., EMP + current timestamp suffix)
+                const autoEmployeeId = `EMP-${Date.now().toString().slice(-6)}`;
+
                 const { error: dbError } = await supabase
                     .from('clerk_users')
                     .insert({
                         id: authData.user.id,
                         email: formData.email,
                         full_name: formData.fullName,
-                        employee_id: formData.employeeId,
+                        employee_id: autoEmployeeId,
                         phone_number: formData.phoneNumber,
-                        password: formData.password, // Storing per user request (Security Warning applies)
+                        password: formData.password,
                         role: 'clerk',
-                        status: 'active'
+                        status: 'application_submitted'
                     });
 
                 if (dbError) {
-                    // If DB insert fails, we might want to clean up auth user or show specific error
                     console.error("Profile creation failed:", dbError);
                     throw new Error("Account created but profile setup failed. Please contact admin.");
                 }
 
-                // Success
-                navigate('/');
+                // Success - Redirect to submission confirmation (or login with message)
+                alert("Application Submitted! Your account is pending approval.");
+                navigate('/login');
             }
         } catch (err: any) {
             setError(err.message || "An error occurred during sign up");
@@ -119,23 +121,13 @@ export function SignUp() {
                     </div>
 
                     <form onSubmit={handleSignUp} className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="fullName">Full Name</Label>
                                 <Input
                                     id="fullName"
                                     placeholder="John Doe"
                                     value={formData.fullName}
-                                    onChange={handleChange}
-                                    required
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="employeeId">Employee ID</Label>
-                                <Input
-                                    id="employeeId"
-                                    placeholder="EMP-001"
-                                    value={formData.employeeId}
                                     onChange={handleChange}
                                     required
                                 />
