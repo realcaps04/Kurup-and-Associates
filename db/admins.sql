@@ -63,5 +63,5 @@ BEGIN
 END;
 $$;
 
--- 7. Seed Initial Admin (Run this line manually if needed, or uncomment)
--- INSERT INTO public.admins (email, password, full_name) VALUES ('admin@example.com', 'admin123', 'System Admin');
+-- 7. Seed Initial Admin (Uncommented for immediate use)
+INSERT INTO public.admins (email, password, full_name) VALUES ('admin@gmail.com', 'admink345', 'System Admin');

@@ -11,6 +11,7 @@ export function Login() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [showErrorModal, setShowErrorModal] = useState(false);
     const navigate = useNavigate();
 
     const handleLogin = async (e: React.FormEvent) => {
@@ -18,16 +19,34 @@ export function Login() {
         setLoading(true);
         setError(null);
 
-        const { error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
+        try {
+            // Attempt Clerk Login via Custom RPC (since users are in clerk_users table)
+            const { data, error: rpcError } = await supabase
+                .rpc('clerk_login', {
+                    email_input: email,
+                    password_input: password
+                });
 
-        if (error) {
-            setError(error.message);
+            if (rpcError) throw rpcError;
+
+            // RPC returns { success: boolean, message?: string, user?: object }
+            if (data && data.success) {
+                // Login Successful
+                // Store session locally (for this prototype)
+                localStorage.setItem('clerk_session', JSON.stringify(data.user));
+                navigate('/');
+            } else {
+                // Login Failed (Invalid creds or not approved)
+                setError(data?.message || 'Login failed. Please check credentials.');
+                setShowErrorModal(true);
+            }
+
+        } catch (err: any) {
+            console.error("Login error:", err);
+            setError(err.message || 'An unexpected error occurred');
+            setShowErrorModal(true);
+        } finally {
             setLoading(false);
-        } else {
-            navigate('/');
         }
     };
 
@@ -106,11 +125,7 @@ export function Login() {
                             </div>
                         </div>
 
-                        {error && (
-                            <div className="p-3 text-sm text-red-500 bg-red-50 border border-red-100 rounded-lg animate-slide-up">
-                                {error}
-                            </div>
-                        )}
+
 
                         <Button
                             type="submit"
@@ -133,6 +148,31 @@ export function Login() {
                     </div>
                 </div>
             </div>
+
+            {/* Error Modal */}
+            {showErrorModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in p-4">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-sm border border-slate-200 animate-scale-up overflow-hidden">
+                        <div className="bg-red-50 p-6 flex flex-col items-center justify-center border-b border-red-100">
+                            <div className="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center mb-2">
+                                <ShieldCheck className="h-6 w-6 text-red-600" />
+                            </div>
+                            <h3 className="text-lg font-bold text-red-900">Login Failed</h3>
+                        </div>
+                        <div className="p-6 text-center space-y-6">
+                            <p className="text-slate-600 text-sm">
+                                {error || "Invalid login credentials. Please check your email and password."}
+                            </p>
+                            <Button
+                                onClick={() => setShowErrorModal(false)}
+                                className="w-full bg-slate-900 hover:bg-slate-800 text-white"
+                            >
+                                Try Again
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -7,6 +7,7 @@ import { ApplicationStatus } from './pages/ApplicationStatus';
 import { Dashboard } from './pages/Dashboard';
 import { AdminLogin } from './pages/admin/AdminLogin';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
+import { CaseRecords } from './pages/CaseRecords';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
     const { session, loading } = useAuth();
@@ -19,6 +20,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
 
     if (!session) {
+        // Fallback: Check for clerk_session in localStorage (for our custom non-Auth users)
+        const localSession = localStorage.getItem('clerk_session');
+        if (localSession) {
+            return <>{children}</>;
+        }
         return <Navigate to="/login" replace />;
     }
 
@@ -59,6 +65,7 @@ function App() {
                     } />
 
                     {/* Admin Routes */}
+                    <Route path="/AdminLogin" element={<Navigate to="/admin/login" replace />} />
                     <Route path="/admin" element={<Navigate to="/admin/login" replace />} />
                     <Route path="/admin/login" element={<AdminLogin />} />
                     <Route path="/admin/dashboard" element={<AdminDashboard />} />
@@ -69,7 +76,7 @@ function App() {
                         </ProtectedRoute>
                     }>
                         <Route index element={<Dashboard />} />
-                        <Route path="cases" element={<div>Cases Placeholder</div>} />
+                        <Route path="cases" element={<CaseRecords />} />
                         <Route path="clients" element={<div>Clients Placeholder</div>} />
                         <Route path="documents" element={<div>Documents Placeholder</div>} />
                     </Route>

@@ -1,11 +1,15 @@
 import { Bell, Search, User, Menu } from 'lucide-react';
 import { Input } from '../ui/Input';
 
-export function Header() {
+interface HeaderProps {
+    onToggleSidebar?: () => void;
+}
+
+export function Header({ onToggleSidebar }: HeaderProps) {
     return (
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-slate-200/50 bg-white/80 backdrop-blur-md px-6 transition-all">
             <div className="flex items-center gap-4 w-full max-w-xl">
-                <button className="md:hidden p-2 text-slate-500 hover:bg-slate-100 rounded-lg">
+                <button onClick={onToggleSidebar} className="md:hidden p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">
                     <Menu className="h-5 w-5" />
                 </button>
                 <div className="relative w-full max-w-md hidden md:block">
@@ -24,7 +28,23 @@ export function Header() {
                 </button>
                 <div className="h-8 w-1px bg-slate-200 mx-2"></div>
                 <button className="flex items-center space-x-2 p-1 pl-2 pr-1 rounded-full hover:bg-slate-100/80 transition-all border border-transparent hover:border-slate-200">
-                    <span className="text-sm font-medium text-slate-700 hidden sm:block">Admin User</span>
+                    <span className="text-sm font-medium text-slate-700 hidden sm:block">
+                        {(() => {
+                            try {
+                                const clerkSession = localStorage.getItem('clerk_session');
+                                if (clerkSession) return JSON.parse(clerkSession).full_name;
+
+                                const adminSession = localStorage.getItem('admin_session');
+                                if (adminSession) return "Administrator";
+                                // Since admin session is just a boolean flag currently, we return static "Administrator"
+                                // or we could store admin name in local storage too.
+
+                                return "User";
+                            } catch (e) {
+                                return "User";
+                            }
+                        })()}
+                    </span>
                     <div className="h-8 w-8 rounded-full bg-slate-900 flex items-center justify-center text-white ring-2 ring-white shadow-sm">
                         <User className="h-4 w-4" />
                     </div>

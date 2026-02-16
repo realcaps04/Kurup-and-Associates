@@ -2,18 +2,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Calendar, Clock, FileText, Scale } from 'lucide-react';
 
 const stats = [
-    { label: 'Active Cases', value: '24', icon: Scale, change: '+2 this week' },
-    { label: 'Upcoming Hearings', value: '8', icon: Calendar, change: 'Next: tomorrow' },
-    { label: 'Pending Documents', value: '12', icon: FileText, change: '3 urgent' },
-    { label: 'Tasks Due', value: '5', icon: Clock, change: 'All today' },
+    { label: 'Active Cases', value: '0', icon: Scale, change: 'No active cases' },
+    { label: 'Upcoming Hearings', value: '0', icon: Calendar, change: 'No scheduled hearings' },
+    { label: 'Pending Documents', value: '0', icon: FileText, change: 'All caught up' },
+    { label: 'Tasks Due', value: '0', icon: Clock, change: 'No tasks pending' },
 ];
 
-const recentActivity = [
-    { id: 1, action: 'Case Update', details: 'Added new evidence to Case #2024-001', time: '2 mins ago' },
-    { id: 2, action: 'Document Upload', details: 'Uploaded "Affidavit.pdf" for Client Smith', time: '1 hour ago' },
-    { id: 3, action: 'Hearing Scheduled', details: 'Hearing for Case #2023-089 set for Feb 20', time: '3 hours ago' },
-    { id: 4, action: 'New Client', details: 'Registered new client: TechCorp Industries', time: 'Yesterday' },
-];
+const recentActivity: any[] = []; // Empty array for now
 
 export function Dashboard() {
     return (
@@ -51,15 +46,21 @@ export function Dashboard() {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-8">
-                            {recentActivity.map((activity) => (
-                                <div key={activity.id} className="flex items-center">
-                                    <div className="ml-4 space-y-1">
-                                        <p className="text-sm font-medium leading-none text-slate-900">{activity.action}</p>
-                                        <p className="text-sm text-slate-500">{activity.details}</p>
-                                    </div>
-                                    <div className="ml-auto font-medium text-xs text-slate-400">{activity.time}</div>
+                            {recentActivity.length === 0 ? (
+                                <div className="text-center py-8 text-slate-500 text-sm">
+                                    No recent activity to display.
                                 </div>
-                            ))}
+                            ) : (
+                                recentActivity.map((activity) => (
+                                    <div key={activity.id} className="flex items-center">
+                                        <div className="ml-4 space-y-1">
+                                            <p className="text-sm font-medium leading-none text-slate-900">{activity.action}</p>
+                                            <p className="text-sm text-slate-500">{activity.details}</p>
+                                        </div>
+                                        <div className="ml-auto font-medium text-xs text-slate-400">{activity.time}</div>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </CardContent>
                 </Card>

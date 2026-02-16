@@ -11,6 +11,7 @@ export function AdminLogin() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [showErrorModal, setShowErrorModal] = useState(false);
     const navigate = useNavigate();
 
     const handleLogin = async (e: React.FormEvent) => {
@@ -33,10 +34,12 @@ export function AdminLogin() {
                 localStorage.setItem('admin_session', 'true');
                 navigate('/admin/dashboard');
             } else {
-                throw new Error("Invalid admin credentials");
+                setError("Invalid admin credentials");
+                setShowErrorModal(true);
             }
         } catch (err: any) {
             setError(err.message || 'Login failed');
+            setShowErrorModal(true);
             console.error("Admin login error:", err);
         } finally {
             setLoading(false);
@@ -44,15 +47,15 @@ export function AdminLogin() {
     };
 
     return (
-        <div className="flex min-h-screen w-full bg-slate-950 items-center justify-center p-4">
-            <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-xl shadow-2xl overflow-hidden animate-fade-in">
+        <div className="flex min-h-screen w-full bg-slate-50 items-center justify-center p-4">
+            <div className="w-full max-w-md bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden animate-fade-in">
                 <div className="p-8 space-y-8">
                     <div className="text-center space-y-2">
-                        <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-red-500/10 mb-4 ring-1 ring-red-500/20">
-                            <ShieldAlert className="h-6 w-6 text-red-500" />
+                        <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-slate-100 mb-4 ring-1 ring-slate-200">
+                            <ShieldAlert className="h-6 w-6 text-slate-700" />
                         </div>
-                        <h1 className="text-2xl font-bold tracking-tight text-white">Administrator Access</h1>
-                        <p className="text-sm text-slate-400">
+                        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Administrator Access</h1>
+                        <p className="text-sm text-slate-500">
                             Secure login for system management.
                         </p>
                     </div>
@@ -60,23 +63,23 @@ export function AdminLogin() {
                     <form onSubmit={handleLogin} className="space-y-6">
                         <div className="space-y-4">
                             <div className="space-y-2">
-                                <Label htmlFor="email" className="text-slate-300">Admin Email</Label>
+                                <Label htmlFor="email" className="text-slate-700">Admin Email</Label>
                                 <Input
                                     id="email"
                                     type="email"
                                     placeholder="admin@firm.com"
-                                    className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus:border-red-500/50 focus:ring-red-500/20"
+                                    className="bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:ring-slate-200"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="password" className="text-slate-300">Password</Label>
+                                <Label htmlFor="password" className="text-slate-700">Password</Label>
                                 <Input
                                     id="password"
                                     type="password"
-                                    className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus:border-red-500/50 focus:ring-red-500/20"
+                                    className="bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:ring-slate-200"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
@@ -84,16 +87,11 @@ export function AdminLogin() {
                             </div>
                         </div>
 
-                        {error && (
-                            <div className="p-3 text-sm text-red-400 bg-red-950/30 border border-red-900/50 rounded-lg animate-slide-up flex items-center gap-2">
-                                <ShieldAlert className="h-4 w-4 shrink-0" />
-                                {error}
-                            </div>
-                        )}
+
 
                         <Button
                             type="submit"
-                            className="w-full bg-red-600 hover:bg-red-700 text-white h-11"
+                            className="w-full bg-slate-900 hover:bg-slate-800 text-white h-11"
                             isLoading={loading}
                         >
                             {loading ? (
@@ -110,13 +108,38 @@ export function AdminLogin() {
                         </Button>
                     </form>
                 </div>
-                <div className="px-8 py-4 bg-slate-950/50 border-t border-slate-800 text-center text-xs text-slate-500">
+                <div className="px-8 py-4 bg-slate-50 border-t border-slate-100 text-center text-xs text-slate-500">
                     <span className="flex items-center justify-center gap-1">
                         <Lock className="h-3 w-3" />
                         Authorized Personnel Only
                     </span>
                 </div>
             </div>
+
+            {/* Error Modal */}
+            {showErrorModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in p-4">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm border border-red-100 animate-scale-up overflow-hidden">
+                        <div className="bg-red-50 p-6 flex flex-col items-center justify-center border-b border-red-100">
+                            <div className="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center mb-2">
+                                <ShieldAlert className="h-6 w-6 text-red-600" />
+                            </div>
+                            <h3 className="text-lg font-bold text-red-900">Access Denied</h3>
+                        </div>
+                        <div className="p-6 text-center space-y-6">
+                            <p className="text-slate-600 text-sm">
+                                {error || "Invalid credentials provided. Please check your email and password."}
+                            </p>
+                            <Button
+                                onClick={() => setShowErrorModal(false)}
+                                className="w-full bg-slate-900 hover:bg-slate-800 text-white"
+                            >
+                                Try Again
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

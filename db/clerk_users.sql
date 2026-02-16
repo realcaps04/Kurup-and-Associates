@@ -71,4 +71,41 @@ $$;
 -- FOR SELECT
 -- USING (auth.jwt() ->> 'role' = 'admin');
 
-ALTER TABLE public.clerk_users ADD COLUMN password TEXT;
+ALTER TABLE public.clerk_users ADD COLUMN IF NOT EXISTS password TEXT;
+
+-- Secure Login RPC for Clerks (replaces Supabase Auth for this custom flow)
+CREATE OR REPLACE FUNCTION public.clerk_login(email_input TEXT, password_input TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  found_user public.clerk_users;
+BEGIN
+  SELECT * INTO found_user
+  FROM public.clerk_users
+  WHERE email = email_input AND password = password_input;
+
+  IF found_user IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'message', 'Invalid email or password');
+  END IF;
+
+  IF found_user.status != 'approved' THEN
+     IF found_user.status = 'application_submitted' THEN
+        RETURN jsonb_build_object('success', false, 'message', 'Account pending approval. Please check status page.');
+     ELSE
+        RETURN jsonb_build_object('success', false, 'message', 'Account is not active.');
+     END IF;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'success', true, 
+    'user', jsonb_build_object(
+      'id', found_user.id,
+      'email', found_user.email,
+      'full_name', found_user.full_name,
+      'role', 'clerk'
+    )
+  );
+END;
+$$;
