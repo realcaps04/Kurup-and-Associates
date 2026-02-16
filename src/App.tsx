@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { Login } from './pages/Login';
 import { SignUp } from './pages/SignUp';
+import { ApplicationStatus } from './pages/ApplicationStatus';
 import { Dashboard } from './pages/Dashboard';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -36,7 +37,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
     return (
-        <BrowserRouter>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <AuthProvider>
                 <Routes>
                     <Route path="/login" element={
@@ -48,6 +49,12 @@ function App() {
                     <Route path="/signup" element={
                         <PublicRoute>
                             <SignUp />
+                        </PublicRoute>
+                    } />
+
+                    <Route path="/status" element={
+                        <PublicRoute>
+                            <ApplicationStatus />
                         </PublicRoute>
                     } />
 

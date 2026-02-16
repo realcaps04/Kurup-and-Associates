@@ -8,7 +8,7 @@ export interface ClerkUser {
     department?: string;
     designation?: string;
     avatar_url?: string;
-    status: 'active' | 'inactive' | 'suspended';
+    status: 'active' | 'inactive' | 'suspended' | 'application_submitted' | 'approved';
     role: string;
     last_login?: string;
     created_at: string;

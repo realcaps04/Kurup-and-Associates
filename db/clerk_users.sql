@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS public.clerk_users (
   avatar_url TEXT,
   
   -- Account Status & Role
-  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'suspended')),
+  status TEXT DEFAULT 'application_submitted' CHECK (status IN ('active', 'inactive', 'suspended', 'application_submitted', 'approved')),
   role TEXT DEFAULT 'clerk', -- Useful if you have different clerk levels (e.g., 'head_clerk')
   
   -- Timestamps
@@ -47,6 +47,23 @@ CREATE POLICY "Clerks can update own profile"
 ON public.clerk_users
 FOR UPDATE
 USING (auth.uid() = id);
+
+-- Secure RPC Function to check application status
+CREATE OR REPLACE FUNCTION public.get_application_status(email_input TEXT)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  account_status TEXT;
+BEGIN
+  SELECT status INTO account_status
+  FROM public.clerk_users
+  WHERE email = email_input;
+  
+  RETURN account_status;
+END;
+$$;
 
 -- Policy: Allow Admins to view all (Placeholder - assumes an 'admins' table or role check)
 -- CREATE POLICY "Admins can view all clerks"

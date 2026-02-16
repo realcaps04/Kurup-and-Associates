@@ -71,8 +71,8 @@ export function SignUp() {
                 }
 
                 // Success - Redirect to submission confirmation (or login with message)
-                alert("Application Submitted! Your account is pending approval.");
-                navigate('/login');
+                // alert("Application Submitted! Your account is pending approval.");
+                navigate('/status');
             }
         } catch (err: any) {
             setError(err.message || "An error occurred during sign up");
