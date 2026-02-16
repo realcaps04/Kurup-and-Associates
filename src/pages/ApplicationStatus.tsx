@@ -4,16 +4,30 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
 import { Loader2, CheckCircle, Clock, XCircle, ArrowRight, ShieldCheck } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 export function ApplicationStatus() {
+    const location = useLocation();
     const [email, setEmail] = useState('');
     const [status, setStatus] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [searched, setSearched] = useState(false);
 
-    const checkStatus = async (e: React.FormEvent) => {
-        e.preventDefault();
+    // Auto-fill and check if email is passed via state
+    React.useEffect(() => {
+        if (location.state?.email) {
+            setEmail(location.state.email);
+            // Optional: Auto-trigger check
+            checkStatus(null, location.state.email);
+        }
+    }, [location.state]);
+
+    const checkStatus = async (e: React.FormEvent | null, specificEmail?: string) => {
+        if (e) e.preventDefault();
+
+        const emailToCheck = specificEmail || email;
+        if (!emailToCheck) return;
+
         setLoading(true);
         setStatus(null);
         setSearched(false);
@@ -21,7 +35,7 @@ export function ApplicationStatus() {
         try {
             // Call the secure RPC function
             const { data, error } = await supabase
-                .rpc('get_application_status', { email_input: email });
+                .rpc('get_application_status', { email_input: emailToCheck });
 
             if (error) throw error;
 
@@ -164,7 +178,12 @@ export function ApplicationStatus() {
                             className="w-full bg-slate-900 hover:bg-slate-800 text-white h-11"
                             isLoading={loading}
                         >
-                            {loading ? 'Checking...' : 'Check Status'}
+                            {loading ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Checking...
+                                </>
+                            ) : 'Check Status'}
                         </Button>
                     </form>
 

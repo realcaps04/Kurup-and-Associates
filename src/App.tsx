@@ -5,6 +5,8 @@ import { Login } from './pages/Login';
 import { SignUp } from './pages/SignUp';
 import { ApplicationStatus } from './pages/ApplicationStatus';
 import { Dashboard } from './pages/Dashboard';
+import { AdminLogin } from './pages/admin/AdminLogin';
+import { AdminDashboard } from './pages/admin/AdminDashboard';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
     const { session, loading } = useAuth();
@@ -53,10 +55,13 @@ function App() {
                     } />
 
                     <Route path="/status" element={
-                        <PublicRoute>
-                            <ApplicationStatus />
-                        </PublicRoute>
+                        <ApplicationStatus />
                     } />
+
+                    {/* Admin Routes */}
+                    <Route path="/admin" element={<Navigate to="/admin/login" replace />} />
+                    <Route path="/admin/login" element={<AdminLogin />} />
+                    <Route path="/admin/dashboard" element={<AdminDashboard />} />
 
                     <Route path="/" element={
                         <ProtectedRoute>
