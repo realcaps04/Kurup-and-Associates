@@ -8,6 +8,7 @@ import { Dashboard } from './pages/Dashboard';
 import { AdminLogin } from './pages/admin/AdminLogin';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { CaseRecords } from './pages/CaseRecords';
+import { Support } from './pages/Support';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
     const { session, loading } = useAuth();
@@ -77,6 +78,7 @@ function App() {
                     }>
                         <Route index element={<Dashboard />} />
                         <Route path="cases" element={<CaseRecords />} />
+                        <Route path="support" element={<Support />} />
                         <Route path="clients" element={<div>Clients Placeholder</div>} />
                         <Route path="documents" element={<div>Documents Placeholder</div>} />
                     </Route>

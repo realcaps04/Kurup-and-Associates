@@ -5,8 +5,8 @@ import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
 import { cn } from '../lib/utils';
 import {
-    Plus, Search, Filter, FolderOpen, MoreVertical, Edit2, Trash2,
-    ChevronLeft, ChevronRight, X, Loader2, CheckSquare
+    Plus, Search, FolderOpen, Edit2, Trash2,
+    X, Loader2, CheckSquare
 } from 'lucide-react';
 
 interface Case {
@@ -26,7 +26,6 @@ export function CaseRecords() {
     const [cases, setCases] = useState<Case[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [filters, setFilters] = useState<any>({});
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -123,40 +122,29 @@ export function CaseRecords() {
     return (
         <div className="space-y-8 animate-fade-in group">
             {/* Header Section */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 border-b border-slate-200/60 pb-8">
-                <div className="space-y-1">
-                    <h2 className="text-3xl font-bold tracking-tight text-slate-900">Case Records</h2>
-                    <p className="text-slate-500 text-lg">Manage and track all legal case files and hearings.</p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/60 pb-6">
+                <div className="space-y-0.5">
+                    <h2 className="text-xl font-bold tracking-tight text-slate-900">Case Records</h2>
+                    <p className="text-slate-500 text-sm">Manage and track all legal case files and hearings.</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <div className="relative flex-1 sm:flex-initial sm:w-80">
+                        <div className="absolute left-3 top-2.5 pointer-events-none">
+                            <Search className="h-4 w-4 text-slate-400" />
+                        </div>
+                        <Input
+                            placeholder="Search cases..."
+                            className="pl-9 h-10 bg-white border-slate-200 focus:border-slate-300 rounded-lg text-sm w-full"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
                     <Button
                         onClick={() => handleOpenModal()}
-                        className="bg-slate-900 hover:bg-slate-800 text-white shadow-xl shadow-slate-900/10 h-11 px-6 transition-transform hover:scale-[1.02]"
+                        className="bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/10 h-10 px-4 text-sm whitespace-nowrap"
                     >
                         <Plus className="mr-2 h-4 w-4" />
-                        New Case Record
-                    </Button>
-                </div>
-            </div>
-
-            {/* Filters & Search Toolbar */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center bg-white p-2 rounded-2xl shadow-sm border border-slate-200">
-                <div className="md:col-span-5 relative">
-                    <div className="absolute left-4 top-3.5 pointer-events-none">
-                        <Search className="h-4 w-4 text-slate-400" />
-                    </div>
-                    <Input
-                        placeholder="Search by case name, number, or client..."
-                        className="pl-11 h-11 bg-slate-50 border-transparent focus:bg-white focus:border-slate-300 transition-all rounded-xl"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                </div>
-                <div className="md:col-span-7 flex items-center justify-end gap-3 px-2">
-                    <div className="h-6 w-px bg-slate-200 hidden md:block"></div>
-                    <Button variant="ghost" className="text-slate-600 hover:bg-slate-50 hover:text-slate-900 hidden sm:flex">
-                        <Filter className="h-4 w-4 mr-2" />
-                        Filter
+                        New Case
                     </Button>
                 </div>
             </div>
@@ -210,8 +198,11 @@ export function CaseRecords() {
                                                     <FolderOpen className="h-4 w-4" />
                                                 </div>
                                                 <div>
-                                                    <div className="font-semibold text-slate-900 text-base">{c.case_name}</div>
+                                                    <div className="font-semibold text-slate-900 text-base">{c.name}</div>
                                                     <div className="flex items-center gap-2 mt-1">
+                                                        <span className="text-xs font-bold text-slate-600 bg-slate-200 px-1.5 py-0.5 rounded border border-slate-300">
+                                                            {c.case_name}
+                                                        </span>
                                                         <span className="text-xs font-mono font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
                                                             #{c.case_no}
                                                         </span>
@@ -222,12 +213,7 @@ export function CaseRecords() {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="font-medium text-slate-900">{c.name}</div>
-                                            {c.society && (
-                                                <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                                                    <span className="truncate max-w-[150px]">{c.society}</span>
-                                                </div>
-                                            )}
+                                            <div className="font-medium text-slate-900">{c.society || '-'}</div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700">
@@ -240,7 +226,7 @@ export function CaseRecords() {
                                         <td className="px-6 py-4">
                                             <span className={cn(
                                                 "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wide border",
-                                                c.status?.toLowerCase() === 'closed' || c.status?.toLowerCase() === 'archived'
+                                                c.status?.toLowerCase() === 'closed' || c.status?.toLowerCase() === 'archived' || c.status?.toLowerCase() === 'disposed'
                                                     ? "bg-slate-100 text-slate-600 border-slate-200"
                                                     : c.status?.toLowerCase() === 'hearing scheduled'
                                                         ? "bg-purple-50 text-purple-700 border-purple-200"
@@ -249,7 +235,7 @@ export function CaseRecords() {
                                                             : "bg-green-50 text-green-700 border-green-200"
                                             )}>
                                                 <div className={cn("h-1.5 w-1.5 rounded-full mr-2",
-                                                    c.status?.toLowerCase() === 'closed' ? "bg-slate-400" :
+                                                    c.status?.toLowerCase() === 'closed' || c.status?.toLowerCase() === 'disposed' ? "bg-slate-400" :
                                                         c.status?.toLowerCase() === 'hearing scheduled' ? "bg-purple-500" :
                                                             c.status?.toLowerCase() === 'in progress' ? "bg-blue-500" :
                                                                 "bg-green-500"

@@ -20,6 +20,7 @@ interface SupportRequest {
 export function Support() {
     const { session } = useAuth();
     const [loading, setLoading] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
     const [requests, setRequests] = useState<SupportRequest[]>([]);
     const [activeTab, setActiveTab] = useState<'new' | 'history'>('new');
 
@@ -39,44 +40,86 @@ export function Support() {
 
     const fetchRequests = async () => {
         setLoading(true);
-        // Using user_id logic if session exists, else simplify for now
-        const query = supabase.from('support_requests').select('*').order('created_at', { ascending: false });
-        // Assume RLS filters by user_id automatically if policy is correct
+        try {
+            const { data, error } = await supabase
+                .from('support_requests')
+                .select('*')
+                .order('created_at', { ascending: false });
 
-        const { data, error } = await query;
-        if (error) console.error('Error fetching requests:', error);
-        else setRequests(data || []);
-
-        setLoading(false);
+            if (error) {
+                console.error('Error fetching requests:', error);
+            } else {
+                setRequests(data || []);
+            }
+        } catch (err) {
+            console.error('Unexpected error fetching requests:', err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
 
-        const { error } = await supabase.from('support_requests').insert([{
-            user_id: session?.user?.id, // Optional depending on auth setup
-            // For now, assume clerk_users table logic handles session differently?
-            // If using Supabase Auth (session?.user?.id), this works.
-            // If using local storage 'clerk_session', we might want to store email.
-            user_email: session?.user?.email || JSON.parse(localStorage.getItem('clerk_session') || '{}')?.email,
-            ...formData,
-            status: 'Open'
-        }]);
+        try {
+            const { error } = await supabase.from('support_requests').insert([{
+                user_id: session?.user?.id, // May be null for manual Clerk login
+                user_email: session?.user?.email || JSON.parse(localStorage.getItem('clerk_session') || '{}')?.email,
+                ...formData,
+                status: 'Open'
+            }]);
 
-        if (error) {
-            console.error('Error submitting request:', error);
-            alert('Failed to submit request. Please try again.');
-        } else {
-            alert('Request submitted successfully!');
-            setFormData({ type: 'Feature Request', priority: 'Medium', subject: '', message: '' });
-            setActiveTab('history');
+            if (error) {
+                console.error('Error submitting request:', error);
+                alert('Failed to submit request. Please ensure you are logged in or try again.');
+            } else {
+                setShowSuccess(true);
+                setFormData({ type: 'Feature Request', priority: 'Medium', subject: '', message: '' });
+            }
+        } catch (err) {
+            console.error('Unexpected error submitting request:', err);
+            alert('An unexpected error occurred. Please try again.');
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     return (
-        <div className="space-y-8 animate-fade-in max-w-5xl mx-auto">
+        <div className="space-y-8 animate-fade-in max-w-5xl mx-auto relative">
+            {/* Success Modal */}
+            {showSuccess && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center transform transition-all animate-in zoom-in-95 duration-200 scale-100">
+                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 mb-6">
+                            <CheckCircle className="h-10 w-10 text-green-600" />
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-900 mb-2">Request Submitted!</h3>
+                        <p className="text-slate-500 mb-6 leading-relaxed">
+                            Thank you for your feedback. We've received your request and will review it shortly.
+                        </p>
+                        <div className="flex gap-3 justify-center">
+                            <Button
+                                onClick={() => {
+                                    setShowSuccess(false);
+                                    setActiveTab('history');
+                                }}
+                                className="bg-slate-900 text-white hover:bg-slate-800 w-full rounded-xl py-3 h-auto"
+                            >
+                                View History
+                            </Button>
+                            <Button
+                                onClick={() => setShowSuccess(false)}
+                                variant="outline"
+                                className="w-full rounded-xl py-3 h-auto border-slate-200 hover:bg-slate-50 text-slate-700"
+                            >
+                                Close
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-6 border-b border-slate-200">
                 <div className="space-y-1">
                     <h2 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">

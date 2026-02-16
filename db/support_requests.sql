@@ -15,16 +15,17 @@ CREATE TABLE IF NOT EXISTS public.support_requests (
 -- Enable RLS
 ALTER TABLE public.support_requests ENABLE ROW LEVEL SECURITY;
 
--- Policy: Users can see their own requests
-CREATE POLICY "Users can view own support requests" 
-ON public.support_requests FOR SELECT 
-USING (auth.uid() = user_id OR user_email = current_user);
+-- Drop potentially conflicting old policies
+DROP POLICY IF EXISTS "Users can view own support requests" ON public.support_requests;
+DROP POLICY IF EXISTS "Users can insert support requests" ON public.support_requests;
+DROP POLICY IF EXISTS "Allow authenticated view all support requests" ON public.support_requests;
+DROP POLICY IF EXISTS "Allow authenticated insert support requests" ON public.support_requests;
 
--- Policy: Users can insert their own requests
-CREATE POLICY "Users can insert support requests" 
-ON public.support_requests FOR INSERT 
-WITH CHECK (true);
+-- Policy: Allow authenticated users to view ALL support requests (matches 'cases' table logic)
+-- This simplifies permissions and ensures logged-in users (Clerks/Admins) can see the list.
+CREATE POLICY "Allow authenticated view all support requests" ON public.support_requests
+FOR SELECT TO authenticated USING (true);
 
--- Policy: Admins can view all (assuming admin role or similar logic, for now open to authenticated for simplicity if admin logic isn't strict yet)
--- Ideally: 
--- CREATE POLICY "Admins can view all" ON public.support_requests FOR ALL USING (public.is_admin());
+-- Policy: Allow authenticated users to insert requests
+CREATE POLICY "Allow authenticated insert support requests" ON public.support_requests
+FOR INSERT TO authenticated WITH CHECK (true);

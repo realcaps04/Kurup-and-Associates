@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, FolderOpen, Users, FileText, CheckSquare, Settings, LogOut, Briefcase, X, PanelLeft } from 'lucide-react';
+import { LayoutDashboard, FolderOpen, Users, FileText, CheckSquare, Settings, LogOut, Briefcase, X, PanelLeft, LifeBuoy } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../context/AuthContext';
 
@@ -10,6 +10,7 @@ const navItems = [
     { icon: FileText, label: 'Document Records', to: '/documents' },
     { icon: CheckSquare, label: 'Tasks', to: '/tasks' },
     { icon: Settings, label: 'Settings', to: '/settings' },
+    { icon: LifeBuoy, label: 'Support', to: '/support' },
 ];
 
 interface SidebarProps {
