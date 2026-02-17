@@ -4,7 +4,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
 import { useAuth } from '../context/AuthContext';
-import { LifeBuoy, Plus, MessageSquare, Clock, CheckCircle, AlertCircle, Loader2, Send } from 'lucide-react';
+import { LifeBuoy, Plus, MessageSquare, Clock, CheckCircle, AlertCircle, Loader2, Send, Trash2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface SupportRequest {
@@ -15,6 +15,7 @@ interface SupportRequest {
     priority: string;
     status: string;
     created_at: string;
+    user_email?: string;
 }
 
 export function Support() {
@@ -23,6 +24,8 @@ export function Support() {
     const [showSuccess, setShowSuccess] = useState(false);
     const [requests, setRequests] = useState<SupportRequest[]>([]);
     const [activeTab, setActiveTab] = useState<'new' | 'history'>('new');
+    const [deleteId, setDeleteId] = useState<number | null>(null);
+    const [clerkMap, setClerkMap] = useState<Record<string, string>>({});
 
     // Form State
     const [formData, setFormData] = useState({
@@ -41,18 +44,34 @@ export function Support() {
     const fetchRequests = async () => {
         setLoading(true);
         try {
-            const { data, error } = await supabase
+            // Fetch requests
+            const { data: requestData, error: requestError } = await supabase
                 .from('support_requests')
                 .select('*')
                 .order('created_at', { ascending: false });
 
-            if (error) {
-                console.error('Error fetching requests:', error);
+            if (requestError) {
+                console.error('Error fetching requests:', requestError);
             } else {
-                setRequests(data || []);
+                setRequests(requestData || []);
+            }
+
+            // Fetch clerks to map emails to names
+            const { data: clerks, error: clerkError } = await supabase
+                .from('clerk_users')
+                .select('email, full_name');
+
+            if (clerkError) {
+                console.error('Error fetching clerks:', clerkError);
+            } else if (clerks) {
+                const map: Record<string, string> = {};
+                clerks.forEach(c => {
+                    if (c.email) map[c.email] = c.full_name;
+                });
+                setClerkMap(map);
             }
         } catch (err) {
-            console.error('Unexpected error fetching requests:', err);
+            console.error('Unexpected error fetching data:', err);
         } finally {
             setLoading(false);
         }
@@ -85,8 +104,33 @@ export function Support() {
         }
     };
 
+    const handleDelete = (id: number) => {
+        setDeleteId(id);
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteId) return;
+
+        try {
+            const { error } = await supabase
+                .from('support_requests')
+                .delete()
+                .eq('id', deleteId);
+
+            if (error) {
+                console.error('Error deleting request:', error);
+                alert('Failed to delete request.');
+            } else {
+                setRequests(requests.filter(req => req.id !== deleteId));
+                setDeleteId(null);
+            }
+        } catch (err) {
+            console.error('Unexpected error deleting request:', err);
+        }
+    };
+
     return (
-        <div className="space-y-8 animate-fade-in max-w-5xl mx-auto relative">
+        <div className="space-y-8 animate-fade-in max-w-7xl mx-auto relative">
             {/* Success Modal */}
             {showSuccess && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
@@ -120,13 +164,43 @@ export function Support() {
                 </div>
             )}
 
+            {/* Delete Confirmation Modal */}
+            {deleteId && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center transform transition-all animate-in zoom-in-95 duration-200 scale-100">
+                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-100 mb-6">
+                            <Trash2 className="h-8 w-8 text-red-600" />
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-900 mb-2">Delete Request?</h3>
+                        <p className="text-slate-500 mb-6 leading-relaxed">
+                            Are you sure you want to delete this request? This action cannot be undone.
+                        </p>
+                        <div className="flex gap-3 justify-center">
+                            <Button
+                                onClick={confirmDelete}
+                                className="bg-red-600 text-white hover:bg-red-700 w-full rounded-xl py-3 h-auto shadow-lg shadow-red-600/20"
+                            >
+                                Delete
+                            </Button>
+                            <Button
+                                onClick={() => setDeleteId(null)}
+                                variant="outline"
+                                className="w-full rounded-xl py-3 h-auto border-slate-200 hover:bg-slate-50 text-slate-700"
+                            >
+                                Cancel
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-6 border-b border-slate-200">
                 <div className="space-y-1">
-                    <h2 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
-                        <LifeBuoy className="h-8 w-8 text-blue-600" />
+                    <h2 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
+                        <LifeBuoy className="h-6 w-6 text-blue-600" />
                         Support Center
                     </h2>
-                    <p className="text-slate-500 text-lg">Need help? Request new features or report issues directly to the admin.</p>
+                    <p className="text-slate-500 text-sm">Need help? Request new features or report issues directly to the admin.</p>
                 </div>
             </div>
 
@@ -244,12 +318,23 @@ export function Support() {
                             </Button>
                         </div>
                     ) : (
-                        <div className="grid gap-4">
-                            {requests.map((req) => (
-                                <div key={req.id} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow group">
-                                    <div className="flex items-start justify-between gap-4">
-                                        <div className="space-y-1">
-                                            <div className="flex items-center gap-3 mb-2">
+                        <div className="overflow-hidden bg-white rounded-xl border border-slate-200 shadow-sm">
+                            <table className="min-w-full divide-y divide-slate-200">
+                                <thead className="bg-slate-50">
+                                    <tr>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Type</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Subject</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Requester</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Priority</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Date</th>
+                                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-slate-200">
+                                    {requests.map((req) => (
+                                        <tr key={req.id} className="hover:bg-slate-50 transition-colors">
+                                            <td className="px-6 py-4 whitespace-nowrap">
                                                 <span className={cn(
                                                     "px-2.5 py-0.5 rounded-full text-xs font-semibold border uppercase tracking-wider",
                                                     req.type === 'Bug Report' ? "bg-red-50 text-red-700 border-red-200" :
@@ -258,6 +343,18 @@ export function Support() {
                                                 )}>
                                                     {req.type}
                                                 </span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm font-medium text-slate-900">{req.subject}</div>
+                                                <div className="text-sm text-slate-500 line-clamp-1">{req.message}</div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="text-sm text-slate-900 font-medium">
+                                                    {(req.user_email && clerkMap[req.user_email]) || req.user_email?.split('@')[0] || 'Unknown Clerk'}
+                                                </div>
+                                                <div className="text-xs text-slate-500">{req.user_email}</div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
                                                 <span className={cn(
                                                     "px-2.5 py-0.5 rounded-full text-xs font-medium border",
                                                     req.status === 'Resolved' ? "bg-green-50 text-green-700 border-green-200" :
@@ -266,28 +363,37 @@ export function Support() {
                                                 )}>
                                                     {req.status}
                                                 </span>
-                                                <span className="text-xs text-slate-400 flex items-center gap-1">
-                                                    <Clock className="h-3 w-3" />
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="flex items-center gap-2">
+                                                    {req.priority === 'Critical' || req.priority === 'High' ? (
+                                                        <AlertCircle className="h-4 w-4 text-red-500" />
+                                                    ) : (
+                                                        <CheckCircle className="h-4 w-4 text-slate-300" />
+                                                    )}
+                                                    <span className="text-sm text-slate-700">{req.priority}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                                                <div className="flex items-center gap-1.5">
+                                                    <Clock className="h-3.5 w-3.5" />
                                                     {new Date(req.created_at).toLocaleDateString()}
-                                                </span>
-                                            </div>
-                                            <h3 className="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-                                                {req.subject}
-                                            </h3>
-                                            <p className="text-slate-600 leading-relaxed text-sm line-clamp-2">
-                                                {req.message}
-                                            </p>
-                                        </div>
-                                        <div className="flex-shrink-0">
-                                            {req.priority === 'Critical' || req.priority === 'High' ? (
-                                                <AlertCircle className="h-5 w-5 text-red-500" />
-                                            ) : (
-                                                <CheckCircle className="h-5 w-5 text-slate-300" />
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => handleDelete(req.id)}
+                                                    className="text-slate-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     )}
                 </div>

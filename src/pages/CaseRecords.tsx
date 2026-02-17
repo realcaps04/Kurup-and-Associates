@@ -6,7 +6,7 @@ import { Label } from '../components/ui/Label';
 import { cn } from '../lib/utils';
 import {
     Plus, Search, FolderOpen, Edit2, Trash2,
-    X, Loader2, CheckSquare, Eye, Filter, ChevronDown, ChevronUp, Check
+    X, Loader2, CheckSquare, Eye, Filter, ChevronDown, ChevronUp, Check, Calendar
 } from 'lucide-react';
 
 interface Case {
@@ -26,9 +26,18 @@ export function CaseRecords() {
     const [cases, setCases] = useState<Case[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [showAllStatus, setShowAllStatus] = useState(false);
     const [caseNameOptions, setCaseNameOptions] = useState<string[]>([]);
     const [isCaseNameDropdownOpen, setIsCaseNameDropdownOpen] = useState(false);
+
+    // Filter State
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [filters, setFilters] = useState({
+        caseName: '',
+        caseNo: '',
+        caseYear: '',
+        date: '',
+        status: 'Active'
+    });
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -145,10 +154,20 @@ export function CaseRecords() {
             c.society?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             c.lawyer?.toLowerCase().includes(searchTerm.toLowerCase());
 
-        const isInactive = ['closed', 'archived', 'disposed'].includes(c.status?.toLowerCase());
-        const matchesStatus = showAllStatus ? true : !isInactive;
+        // Filter Popover Logic
+        const matchesCaseName = filters.caseName ? c.case_name === filters.caseName : true;
+        const matchesCaseNo = filters.caseNo ? c.case_no?.toString().includes(filters.caseNo) : true;
+        const matchesCaseYear = filters.caseYear ? c.case_year?.toString().includes(filters.caseYear) : true;
+        const matchesDate = filters.date ? c.created_at?.startsWith(filters.date) : true;
 
-        return matchesSearch && matchesStatus;
+        let matchesStatus = true;
+        if (filters.status === 'Active') {
+            matchesStatus = !['closed', 'archived', 'disposed'].includes(c.status?.toLowerCase());
+        } else if (filters.status !== 'All') {
+            matchesStatus = c.status?.toLowerCase() === filters.status.toLowerCase();
+        }
+
+        return matchesSearch && matchesCaseName && matchesCaseNo && matchesCaseYear && matchesDate && matchesStatus;
     });
 
     // Pagination Logic
@@ -168,7 +187,7 @@ export function CaseRecords() {
     // Reset to first page when search changes
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm]);
+    }, [searchTerm, filters]);
 
     return (
         <div className="space-y-8 animate-fade-in group">
@@ -190,14 +209,97 @@ export function CaseRecords() {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <Button
-                        variant="outline"
-                        onClick={() => setShowAllStatus(!showAllStatus)}
-                        className={cn("h-10 px-3 whitespace-nowrap", showAllStatus ? "bg-slate-100 text-slate-900" : "text-slate-500")}
-                    >
-                        <Filter className="h-4 w-4 mr-2" />
-                        {showAllStatus ? "All Statuses" : "Active Only"}
-                    </Button>
+                    <div className="relative">
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsFilterOpen(!isFilterOpen)}
+                            className={cn("h-10 w-10 p-0 shrink-0", isFilterOpen && "bg-slate-100 border-slate-300")}
+                        >
+                            <Filter className="h-4 w-4 text-slate-600" />
+                        </Button>
+                        {isFilterOpen && (
+                            <>
+                                <div className="fixed inset-0 z-30" onClick={() => setIsFilterOpen(false)} />
+                                <div className="absolute right-0 top-12 z-40 w-80 bg-white rounded-xl shadow-2xl border border-slate-100 p-4 animate-in fade-in-0 zoom-in-95 space-y-4 ring-1 ring-slate-900/5">
+                                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                                        <h4 className="font-semibold text-sm text-slate-900 flex items-center gap-2">
+                                            <Filter className="h-3.5 w-3.5 text-slate-500" />
+                                            Filter Records
+                                        </h4>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setFilters({ caseName: '', caseNo: '', caseYear: '', date: '', status: 'Active' })}
+                                            className="h-auto p-0 text-xs text-red-500 hover:text-red-700 hover:bg-transparent px-2 py-1"
+                                        >
+                                            Reset
+                                        </Button>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <div className="space-y-1.5">
+                                            <Label className="text-xs font-medium text-slate-700">Case Type</Label>
+                                            <select
+                                                className="w-full h-9 rounded-lg border border-slate-200 text-xs px-2.5 focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-slate-50/50"
+                                                value={filters.caseName}
+                                                onChange={e => setFilters({ ...filters, caseName: e.target.value })}
+                                            >
+                                                <option value="">All Types</option>
+                                                {caseNameOptions.map(name => <option key={name} value={name}>{name}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="space-y-1.5">
+                                                <Label className="text-xs font-medium text-slate-700">Case No</Label>
+                                                <Input
+                                                    className="h-9 text-xs bg-slate-50/50"
+                                                    placeholder="e.g. 123"
+                                                    value={filters.caseNo}
+                                                    onChange={e => setFilters({ ...filters, caseNo: e.target.value })}
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label className="text-xs font-medium text-slate-700">Year</Label>
+                                                <Input
+                                                    className="h-9 text-xs bg-slate-50/50"
+                                                    placeholder="e.g. 2024"
+                                                    value={filters.caseYear}
+                                                    onChange={e => setFilters({ ...filters, caseYear: e.target.value })}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label className="text-xs font-medium text-slate-700">Creation Date</Label>
+                                            <div className="relative">
+                                                <Input
+                                                    type="date"
+                                                    className="h-9 text-xs pl-9 bg-slate-50/50"
+                                                    value={filters.date}
+                                                    onChange={e => setFilters({ ...filters, date: e.target.value })}
+                                                />
+                                                <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label className="text-xs font-medium text-slate-700">Status</Label>
+                                            <select
+                                                className="w-full h-9 rounded-lg border border-slate-200 text-xs px-2.5 focus:outline-none focus:ring-2 focus:ring-slate-900/10 bg-slate-50/50"
+                                                value={filters.status}
+                                                onChange={e => setFilters({ ...filters, status: e.target.value })}
+                                            >
+                                                <option value="All">All Statuses</option>
+                                                <option value="Active">Active Only</option>
+                                                <option value="Open">Open</option>
+                                                <option value="In Progress">In Progress</option>
+                                                <option value="Hearing Scheduled">Hearing Scheduled</option>
+                                                <option value="Closed">Closed</option>
+                                                <option value="Archived">Archived</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
                     <Button
                         onClick={() => handleOpenModal()}
                         className="bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/10 h-10 px-4 text-sm whitespace-nowrap"
@@ -257,7 +359,7 @@ export function CaseRecords() {
                                                     <FolderOpen className="h-4 w-4" />
                                                 </div>
                                                 <div>
-                                                    <div className="font-semibold text-slate-900 text-base">{c.name}</div>
+                                                    <div className="font-semibold text-slate-900 text-sm">{c.name}</div>
                                                     <div className="flex items-center gap-2 mt-1">
                                                         <span className="text-xs font-bold text-slate-600 bg-slate-200 px-1.5 py-0.5 rounded border border-slate-300">
                                                             {c.case_name}

@@ -1,15 +1,13 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, FolderOpen, Users, FileText, CheckSquare, Settings, LogOut, Briefcase, X, PanelLeft, LifeBuoy } from 'lucide-react';
+import { LayoutDashboard, FolderOpen, Users, FileText, LogOut, Briefcase, X, PanelLeft, LifeBuoy } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../context/AuthContext';
 
 const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', to: '/' },
     { icon: FolderOpen, label: 'Case Records', to: '/cases' },
-    { icon: Users, label: 'Client Management', to: '/clients' },
-    { icon: FileText, label: 'Document Records', to: '/documents' },
-    { icon: CheckSquare, label: 'Tasks', to: '/tasks' },
-    { icon: Settings, label: 'Settings', to: '/settings' },
+    { icon: Users, label: 'Case Copies', to: '/case-copies' },
+    { icon: FileText, label: 'Society Details', to: '/society-details' },
     { icon: LifeBuoy, label: 'Support', to: '/support' },
 ];
 
