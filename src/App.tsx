@@ -11,6 +11,7 @@ import { CaseRecords } from './pages/CaseRecords';
 import { Support } from './pages/Support';
 import { CaseCopies } from './pages/CaseCopies';
 import { SocietyDetails } from './pages/SocietyDetails';
+import { InterimOrders } from './pages/InterimOrders';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
     const { session, loading } = useAuth();
@@ -83,6 +84,7 @@ function App() {
                         <Route path="support" element={<Support />} />
                         <Route path="case-copies" element={<CaseCopies />} />
                         <Route path="society-details" element={<SocietyDetails />} />
+                        <Route path="interim-orders" element={<InterimOrders />} />
                     </Route>
                 </Routes>
             </AuthProvider>
