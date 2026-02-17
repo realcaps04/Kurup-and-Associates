@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../../components/ui/Button';
 import {
-    Users, FileText, Search, Bell, LogOut, CheckCircle, Loader2, UserPlus, Clock, UserCheck, LifeBuoy, Eye, X
+    Users, FileText, Search, Bell, LogOut, CheckCircle, Loader2, UserPlus, Clock, UserCheck, LifeBuoy, Eye, X, Send
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ClerkUser } from '../../types/clerk';
@@ -17,6 +17,7 @@ interface SupportRequest {
     priority: 'Low' | 'Medium' | 'High' | 'Critical';
     status: 'Open' | 'In Progress' | 'Resolved' | 'Closed';
     created_at: string;
+    admin_response?: string;
 }
 
 export function AdminDashboard() {
@@ -27,7 +28,51 @@ export function AdminDashboard() {
     const [activeTab, setActiveTab] = useState<'requests' | 'active_clerks' | 'support_requests'>('requests');
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [selectedTicket, setSelectedTicket] = useState<SupportRequest | null>(null);
+
+    // Reply state
+    const [isReplying, setIsReplying] = useState(false);
+    const [replyText, setReplyText] = useState('');
+    const [replyLoading, setReplyLoading] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
+
     const navigate = useNavigate();
+
+    // Reset reply state when ticket opens
+    useEffect(() => {
+        if (selectedTicket) {
+            setIsReplying(false);
+            setReplyText(selectedTicket.admin_response || '');
+        }
+    }, [selectedTicket]);
+
+    // ... existing fetch functions ...
+
+    const handleSendReply = async () => {
+        if (!selectedTicket || !replyText.trim()) return;
+        setReplyLoading(true);
+        try {
+            const { error: rpcError } = await supabase.rpc('admin_reply_to_ticket', {
+                ticket_id: selectedTicket.id,
+                response_text: replyText
+            });
+
+            if (rpcError) throw rpcError;
+
+            // Update local state
+            const updatedTicket = { ...selectedTicket, admin_response: replyText };
+            setSelectedTicket(updatedTicket);
+            setSupportTickets(prev => prev.map(t => t.id === updatedTicket.id ? updatedTicket : t));
+
+            setIsReplying(false);
+            setShowSuccess(true);
+        } catch (error) {
+            console.error('Error sending reply:', error);
+            alert('Failed to send reply.');
+        } finally {
+            setReplyLoading(false);
+        }
+    };
+
 
     // Fetch Pending Requests
     const fetchRequests = async () => {
@@ -42,6 +87,8 @@ export function AdminDashboard() {
             setLoading(false);
         }
     };
+
+    const [statusChangeSuccess, setStatusChangeSuccess] = useState(false);
 
     // Fetch Active Clerks
     const fetchActiveClerks = async () => {
@@ -105,10 +152,10 @@ export function AdminDashboard() {
                 ticket.id === ticketId ? { ...ticket, status: newStatus as any } : ticket
             ));
 
-            // Also update selected ticket if open
-            if (selectedTicket && selectedTicket.id === ticketId) {
-                setSelectedTicket({ ...selectedTicket, status: newStatus as any });
-            }
+            // Close modal and show success
+            setSelectedTicket(null);
+            setStatusChangeSuccess(true);
+            setTimeout(() => setStatusChangeSuccess(false), 3000); // Auto hide after 3s
 
         } catch (error) {
             console.error('Error updating status:', error);
@@ -156,6 +203,41 @@ export function AdminDashboard() {
 
     return (
         <div className="min-h-screen bg-slate-50 flex font-sans">
+            {/* Success Modal */}
+            {showSuccess && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center transform transition-all animate-in zoom-in-95 duration-200 scale-100">
+                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 mb-6">
+                            <CheckCircle className="h-10 w-10 text-green-600" />
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-900 mb-2">Reply Sent!</h3>
+                        <p className="text-slate-500 mb-6 leading-relaxed">
+                            Your response has been sent to the clerk successfully and the ticket has been updated.
+                        </p>
+                        <div className="flex justify-center">
+                            <Button
+                                onClick={() => setShowSuccess(false)}
+                                className="bg-slate-900 text-white hover:bg-slate-800 w-full rounded-xl py-3 h-auto"
+                            >
+                                Continue
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Status Change Success Modal */}
+            {statusChangeSuccess && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-xl w-fit min-w-[300px] p-6 text-center transform transition-all animate-in zoom-in-95 duration-200 scale-100">
+                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 mb-4">
+                            <CheckCircle className="h-6 w-6 text-blue-600" />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900">Status Updated</h3>
+                    </div>
+                </div>
+            )}
+
             {/* Sidebar */}
             <aside className="w-72 bg-white border-r border-slate-200 fixed h-full z-40 hidden md:flex flex-col shadow-sm">
                 <div className="p-6 border-b border-slate-100 flex items-center gap-3">
@@ -501,6 +583,68 @@ export function AdminDashboard() {
                                     <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">Message Content</label>
                                     <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap">{selectedTicket.message}</p>
                                 </div>
+
+                                {/* Admin Reply Section */}
+                                <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <label className="text-xs font-semibold text-blue-800 uppercase tracking-wider block">Admin Response</label>
+                                        {!isReplying && !selectedTicket.admin_response && (
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => { setIsReplying(true); setReplyText(''); }}
+                                                className="h-6 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-100"
+                                            >
+                                                Reply
+                                            </Button>
+                                        )}
+                                        {!isReplying && selectedTicket.admin_response && (
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => { setIsReplying(true); setReplyText(selectedTicket.admin_response || ''); }}
+                                                className="h-6 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-100"
+                                            >
+                                                Edit
+                                            </Button>
+                                        )}
+                                    </div>
+
+                                    {isReplying ? (
+                                        <div className="space-y-3">
+                                            <textarea
+                                                className="w-full rounded-lg border-blue-200 bg-white p-3 text-sm focus:border-blue-400 focus:ring-blue-400 min-h-[100px]"
+                                                placeholder="Type your reply to the clerk..."
+                                                value={replyText}
+                                                onChange={(e) => setReplyText(e.target.value)}
+                                            />
+                                            <div className="flex justify-end gap-2">
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={() => setIsReplying(false)}
+                                                    className="text-slate-500 hover:text-slate-700"
+                                                >
+                                                    Cancel
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    onClick={handleSendReply}
+                                                    disabled={replyLoading}
+                                                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                                                >
+                                                    {replyLoading ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Send className="h-3 w-3 mr-2" />}
+                                                    Send Reply
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap">
+                                            {selectedTicket.admin_response || <span className="text-slate-400 italic">No response sent yet.</span>}
+                                        </p>
+                                    )}
+                                </div>
+
                                 <div className="flex items-center gap-4 text-sm text-slate-500 pt-4 border-t border-slate-100">
                                     <div className="flex items-center gap-2">
                                         <Users className="h-4 w-4" />
@@ -512,19 +656,17 @@ export function AdminDashboard() {
                                     </div>
                                 </div>
                             </div>
-                        </div>
-
-                        <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">
-                            <Button variant="outline" onClick={() => setSelectedTicket(null)}>
-                                Close
-                            </Button>
-                            <Button
-                                onClick={() => handleUpdateSupportStatus(selectedTicket.id, 'Resolved')}
-                                disabled={selectedTicket.status === 'Resolved'}
-                                className="bg-green-600 hover:bg-green-700 text-white"
-                            >
-                                Mark as Resolved
-                            </Button>
+                            <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">
+                                <Button variant="outline" onClick={() => setSelectedTicket(null)}>
+                                    Close
+                                </Button>
+                                <Button
+                                    onClick={() => handleUpdateSupportStatus(selectedTicket.id, selectedTicket.status)}
+                                    className="bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/10"
+                                >
+                                    Confirm
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -106,25 +106,38 @@ export function CaseRecords() {
         e.preventDefault();
         setModalLoading(true);
 
+        // Basic validation
+        if (!formData.case_name?.trim()) {
+            alert('Please select or enter a Case Name.');
+            setModalLoading(false);
+            return;
+        }
+
         try {
+            const caseData = {
+                ...formData,
+                case_no: formData.case_no ? Number(formData.case_no) : undefined,
+                case_year: formData.case_year ? Number(formData.case_year) : undefined,
+            };
+
             if (editingCase) {
                 const { error } = await supabase
                     .from('cases')
-                    .update(formData)
+                    .update(caseData)
                     .eq('id', editingCase.id);
                 if (error) throw error;
             } else {
                 const { error } = await supabase
                     .from('cases')
-                    .insert([formData]);
+                    .insert([caseData]);
                 if (error) throw error;
             }
 
             setIsModalOpen(false);
             fetchCases();
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error saving case:', error);
-            alert('Failed to save case record.');
+            alert(`Failed to save case record: ${error.message || 'Unknown error'}`);
         } finally {
             setModalLoading(false);
         }
@@ -497,22 +510,28 @@ export function CaseRecords() {
                                 <div className="space-y-2">
                                     <Label className="text-slate-700">Case Name <span className="text-red-500">*</span></Label>
                                     <div className="relative">
-                                        <div
-                                            className={cn(
-                                                "flex h-10 w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm ring-offset-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer transition-all hover:bg-slate-100/50",
-                                                isCaseNameDropdownOpen && "ring-2 ring-slate-900/10 bg-white"
-                                            )}
-                                            onClick={() => setIsCaseNameDropdownOpen(!isCaseNameDropdownOpen)}
-                                        >
-                                            <span className={cn(!formData.case_name && "text-slate-500")}>
-                                                {formData.case_name || "Select Case Name"}
-                                            </span>
-                                            {isCaseNameDropdownOpen ? (
-                                                <ChevronUp className="h-4 w-4 opacity-50" />
-                                            ) : (
-                                                <ChevronDown className="h-4 w-4 opacity-50" />
-                                            )}
+                                        <div className="flex bg-slate-50 border border-slate-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-slate-900/10 focus-within:ring-offset-2 transition-all">
+                                            <input
+                                                type="text"
+                                                required
+                                                value={formData.case_name || ''}
+                                                onChange={(e) => setFormData({ ...formData, case_name: e.target.value })}
+                                                placeholder="Select or enter Case Name"
+                                                className="flex-1 px-3 py-2 bg-transparent text-sm focus:outline-none placeholder:text-slate-500"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsCaseNameDropdownOpen(!isCaseNameDropdownOpen)}
+                                                className="px-3 border-l border-slate-200 hover:bg-slate-100 transition-colors focus:outline-none"
+                                            >
+                                                {isCaseNameDropdownOpen ? (
+                                                    <ChevronUp className="h-4 w-4 opacity-50" />
+                                                ) : (
+                                                    <ChevronDown className="h-4 w-4 opacity-50" />
+                                                )}
+                                            </button>
                                         </div>
+
                                         {isCaseNameDropdownOpen && (
                                             <>
                                                 <div
@@ -540,7 +559,7 @@ export function CaseRecords() {
                                                     ))}
                                                     {caseNameOptions.length === 0 && (
                                                         <div className="py-6 text-center text-sm text-slate-500">
-                                                            No options found.
+                                                            No options found. Type to add new.
                                                         </div>
                                                     )}
                                                 </div>
@@ -554,8 +573,8 @@ export function CaseRecords() {
                                         <Input
                                             type="number"
                                             required
-                                            value={formData.case_no || ''}
-                                            onChange={e => setFormData({ ...formData, case_no: parseInt(e.target.value) })}
+                                            value={formData.case_no ?? ''}
+                                            onChange={e => setFormData({ ...formData, case_no: e.target.value ? parseInt(e.target.value) : undefined })}
                                             placeholder="1024"
                                             className="bg-slate-50 border-slate-200 focus:bg-white font-mono"
                                         />
@@ -565,8 +584,8 @@ export function CaseRecords() {
                                         <Input
                                             type="number"
                                             required
-                                            value={formData.case_year || ''}
-                                            onChange={e => setFormData({ ...formData, case_year: parseInt(e.target.value) })}
+                                            value={formData.case_year ?? ''}
+                                            onChange={e => setFormData({ ...formData, case_year: e.target.value ? parseInt(e.target.value) : undefined })}
                                             placeholder="2024"
                                             className="bg-slate-50 border-slate-200 focus:bg-white font-mono"
                                         />

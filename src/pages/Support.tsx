@@ -4,7 +4,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
 import { useAuth } from '../context/AuthContext';
-import { LifeBuoy, Plus, MessageSquare, Clock, CheckCircle, AlertCircle, Loader2, Send, Trash2 } from 'lucide-react';
+import { LifeBuoy, Plus, MessageSquare, Clock, CheckCircle, AlertCircle, Loader2, Send, Trash2, Eye, X, UserCheck } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface SupportRequest {
@@ -16,6 +16,7 @@ interface SupportRequest {
     status: string;
     created_at: string;
     user_email?: string;
+    admin_response?: string;
 }
 
 export function Support() {
@@ -25,6 +26,7 @@ export function Support() {
     const [requests, setRequests] = useState<SupportRequest[]>([]);
     const [activeTab, setActiveTab] = useState<'new' | 'history'>('new');
     const [deleteId, setDeleteId] = useState<number | null>(null);
+    const [selectedRequest, setSelectedRequest] = useState<SupportRequest | null>(null);
     const [clerkMap, setClerkMap] = useState<Record<string, string>>({});
 
     // Form State
@@ -131,6 +133,87 @@ export function Support() {
 
     return (
         <div className="space-y-8 animate-fade-in max-w-7xl mx-auto relative">
+            {/* View Details Modal */}
+            {selectedRequest && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                            <h3 className="text-lg font-bold text-slate-900">Request Details</h3>
+                            <button
+                                onClick={() => setSelectedRequest(null)}
+                                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-6">
+                            <div className="grid grid-cols-2 gap-6">
+                                <div>
+                                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Status</label>
+                                    <span className={cn(
+                                        "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border",
+                                        selectedRequest.status === 'Resolved' ? "bg-green-50 text-green-700 border-green-200" :
+                                            selectedRequest.status === 'In Progress' ? "bg-amber-50 text-amber-700 border-amber-200" :
+                                                "bg-slate-100 text-slate-600 border-slate-200"
+                                    )}>
+                                        {selectedRequest.status}
+                                    </span>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Priority</label>
+                                    <span className={cn("inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border",
+                                        selectedRequest.priority === 'Critical' || selectedRequest.priority === 'High' ? "bg-red-50 text-red-700 border-red-200" : "bg-blue-50 text-blue-700 border-blue-200"
+                                    )}>
+                                        {selectedRequest.priority}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Subject</label>
+                                    <p className="text-slate-900 font-medium">{selectedRequest.subject}</p>
+                                </div>
+                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">Message Content</label>
+                                    <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap">{selectedRequest.message}</p>
+                                </div>
+
+                                {/* Admin Response Section */}
+                                {selectedRequest.admin_response && (
+                                    <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 relative overflow-hidden">
+                                        <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <div className="h-6 w-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                                                <UserCheck className="h-3 w-3" />
+                                            </div>
+                                            <label className="text-xs font-bold text-blue-900 uppercase tracking-wider block">Admin Response</label>
+                                        </div>
+                                        <p className="text-slate-800 text-sm leading-relaxed whitespace-pre-wrap pl-8">
+                                            {selectedRequest.admin_response}
+                                        </p>
+                                    </div>
+                                )}
+
+                                <div className="flex items-center gap-4 text-sm text-slate-500 pt-4 border-t border-slate-100">
+                                    <div className="flex items-center gap-2">
+                                        <Clock className="h-4 w-4" />
+                                        <span>Submitted on {new Date(selectedRequest.created_at).toLocaleString()}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex justify-end">
+                            <Button variant="outline" onClick={() => setSelectedRequest(null)}>
+                                Close
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Success Modal */}
             {showSuccess && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
@@ -381,14 +464,24 @@ export function Support() {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => handleDelete(req.id)}
-                                                    className="text-slate-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => setSelectedRequest(req)}
+                                                        className="text-slate-400 hover:text-blue-600 hover:bg-blue-50 p-2 rounded-lg transition-colors"
+                                                    >
+                                                        <Eye className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => handleDelete(req.id)}
+                                                        className="text-slate-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
