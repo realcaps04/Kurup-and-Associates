@@ -6,7 +6,7 @@ import { Label } from '../components/ui/Label';
 import { cn } from '../lib/utils';
 import {
     Plus, Search, FolderOpen, Edit2, Trash2,
-    X, Loader2, CheckSquare
+    X, Loader2, CheckSquare, Eye, Filter, ChevronDown, ChevronUp, Check
 } from 'lucide-react';
 
 interface Case {
@@ -26,6 +26,9 @@ export function CaseRecords() {
     const [cases, setCases] = useState<Case[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [showAllStatus, setShowAllStatus] = useState(false);
+    const [caseNameOptions, setCaseNameOptions] = useState<string[]>([]);
+    const [isCaseNameDropdownOpen, setIsCaseNameDropdownOpen] = useState(false);
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -40,7 +43,24 @@ export function CaseRecords() {
 
     useEffect(() => {
         fetchCases();
+        fetchCaseNames();
     }, []);
+
+    const fetchCaseNames = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('case_names')
+                .select('name')
+                .order('name', { ascending: true });
+
+            if (error) throw error;
+            if (data) {
+                setCaseNameOptions(data.map(item => item.name));
+            }
+        } catch (error) {
+            console.error('Error fetching case names:', error);
+        }
+    };
 
     const fetchCases = async () => {
         setLoading(true);
@@ -113,11 +133,42 @@ export function CaseRecords() {
         }
     };
 
-    const filteredCases = cases.filter(c =>
-        c.case_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.case_no?.toString().includes(searchTerm)
-    );
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+
+    const filteredCases = cases.filter(c => {
+        const matchesSearch =
+            c.case_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            c.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            c.case_no?.toString().includes(searchTerm) ||
+            c.case_year?.toString().includes(searchTerm) ||
+            c.society?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            c.lawyer?.toLowerCase().includes(searchTerm.toLowerCase());
+
+        const isInactive = ['closed', 'archived', 'disposed'].includes(c.status?.toLowerCase());
+        const matchesStatus = showAllStatus ? true : !isInactive;
+
+        return matchesSearch && matchesStatus;
+    });
+
+    // Pagination Logic
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentItems = filteredCases.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(filteredCases.length / itemsPerPage);
+
+    const handlePrevious = () => {
+        setCurrentPage(prev => Math.max(prev - 1, 1));
+    };
+
+    const handleNext = () => {
+        setCurrentPage(prev => Math.min(prev + 1, totalPages));
+    };
+
+    // Reset to first page when search changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm]);
 
     return (
         <div className="space-y-8 animate-fade-in group">
@@ -139,6 +190,14 @@ export function CaseRecords() {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
+                    <Button
+                        variant="outline"
+                        onClick={() => setShowAllStatus(!showAllStatus)}
+                        className={cn("h-10 px-3 whitespace-nowrap", showAllStatus ? "bg-slate-100 text-slate-900" : "text-slate-500")}
+                    >
+                        <Filter className="h-4 w-4 mr-2" />
+                        {showAllStatus ? "All Statuses" : "Active Only"}
+                    </Button>
                     <Button
                         onClick={() => handleOpenModal()}
                         className="bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/10 h-10 px-4 text-sm whitespace-nowrap"
@@ -190,7 +249,7 @@ export function CaseRecords() {
                                     </td>
                                 </tr>
                             ) : (
-                                filteredCases.map((c) => (
+                                currentItems.map((c) => (
                                     <tr key={c.id} className="hover:bg-slate-50/80 transition-colors group border-transparent hover:border-slate-100">
                                         <td className="px-6 py-4">
                                             <div className="flex items-start gap-4">
@@ -249,6 +308,14 @@ export function CaseRecords() {
                                                     variant="ghost"
                                                     size="sm"
                                                     onClick={() => handleOpenModal(c)}
+                                                    className="h-8 w-8 p-0 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg"
+                                                >
+                                                    <Eye className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => handleOpenModal(c)}
                                                     className="h-8 w-8 p-0 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
                                                 >
                                                     <Edit2 className="h-4 w-4" />
@@ -273,14 +340,26 @@ export function CaseRecords() {
                 {/* Pagination Footer */}
                 <div className="border-t border-slate-100 px-6 py-4 flex items-center justify-between bg-slate-50/50">
                     <div className="text-sm text-slate-500 font-medium">
-                        Showing <span className="text-slate-900">{filteredCases.length}</span> results
+                        Showing <span className="text-slate-900">{filteredCases.length > 0 ? indexOfFirstItem + 1 : 0}</span> to <span className="text-slate-900">{Math.min(indexOfLastItem, filteredCases.length)}</span> of <span className="text-slate-900">{filteredCases.length}</span> results
                     </div>
                     <div className="flex items-center gap-2">
-                        <div className="text-xs text-slate-400 mr-2 hidden sm:block">Page 1 of 1</div>
-                        <Button variant="outline" size="sm" disabled className="h-8 px-3 text-xs">
+                        <div className="text-xs text-slate-400 mr-2 hidden sm:block">Page {currentPage} of {totalPages || 1}</div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handlePrevious}
+                            disabled={currentPage === 1}
+                            className="h-8 px-3 text-xs"
+                        >
                             Previous
                         </Button>
-                        <Button variant="outline" size="sm" disabled className="h-8 px-3 text-xs">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleNext}
+                            disabled={currentPage === totalPages || totalPages === 0}
+                            className="h-8 px-3 text-xs"
+                        >
                             Next
                         </Button>
                     </div>
@@ -315,13 +394,57 @@ export function CaseRecords() {
 
                                 <div className="space-y-2">
                                     <Label className="text-slate-700">Case Name <span className="text-red-500">*</span></Label>
-                                    <Input
-                                        required
-                                        value={formData.case_name}
-                                        onChange={e => setFormData({ ...formData, case_name: e.target.value })}
-                                        placeholder="e.g. Property Dispute vs. Builder"
-                                        className="bg-slate-50 border-slate-200 focus:bg-white"
-                                    />
+                                    <div className="relative">
+                                        <div
+                                            className={cn(
+                                                "flex h-10 w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm ring-offset-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer transition-all hover:bg-slate-100/50",
+                                                isCaseNameDropdownOpen && "ring-2 ring-slate-900/10 bg-white"
+                                            )}
+                                            onClick={() => setIsCaseNameDropdownOpen(!isCaseNameDropdownOpen)}
+                                        >
+                                            <span className={cn(!formData.case_name && "text-slate-500")}>
+                                                {formData.case_name || "Select Case Name"}
+                                            </span>
+                                            {isCaseNameDropdownOpen ? (
+                                                <ChevronUp className="h-4 w-4 opacity-50" />
+                                            ) : (
+                                                <ChevronDown className="h-4 w-4 opacity-50" />
+                                            )}
+                                        </div>
+                                        {isCaseNameDropdownOpen && (
+                                            <>
+                                                <div
+                                                    className="fixed inset-0 z-40"
+                                                    onClick={() => setIsCaseNameDropdownOpen(false)}
+                                                />
+                                                <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-slate-100 bg-white shadow-xl shadow-slate-900/5 animate-in fade-in-0 zoom-in-95 py-1">
+                                                    {caseNameOptions.map((name) => (
+                                                        <div
+                                                            key={name}
+                                                            className={cn(
+                                                                "relative flex cursor-pointer select-none items-center rounded-lg mx-1 px-2 py-2 text-sm outline-none transition-colors hover:bg-slate-100 hover:text-slate-900",
+                                                                formData.case_name === name && "bg-slate-50 text-slate-900 font-medium"
+                                                            )}
+                                                            onClick={() => {
+                                                                setFormData({ ...formData, case_name: name });
+                                                                setIsCaseNameDropdownOpen(false);
+                                                            }}
+                                                        >
+                                                            <span className="flex-1 truncate">{name}</span>
+                                                            {formData.case_name === name && (
+                                                                <Check className="ml-auto h-4 w-4 text-slate-900" />
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                    {caseNameOptions.length === 0 && (
+                                                        <div className="py-6 text-center text-sm text-slate-500">
+                                                            No options found.
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
@@ -386,31 +509,41 @@ export function CaseRecords() {
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-slate-700">Represents</Label>
-                                    <select
-                                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 focus:bg-white transition-all h-10"
-                                        value={formData.represents}
-                                        onChange={e => setFormData({ ...formData, represents: e.target.value })}
-                                    >
-                                        <option value="">Select Role</option>
-                                        <option value="Plaintiff">Plaintiff</option>
-                                        <option value="Defendant">Defendant</option>
-                                        <option value="Petitioner">Petitioner</option>
-                                        <option value="Respondent">Respondent</option>
-                                    </select>
+                                    <div className="relative">
+                                        <select
+                                            className="w-full h-10 appearance-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 focus:bg-white transition-all cursor-pointer"
+                                            value={formData.represents}
+                                            onChange={e => setFormData({ ...formData, represents: e.target.value })}
+                                        >
+                                            <option value="">Select Role</option>
+                                            <option value="Plaintiff">Plaintiff</option>
+                                            <option value="Defendant">Defendant</option>
+                                            <option value="Petitioner">Petitioner</option>
+                                            <option value="Respondent">Respondent</option>
+                                        </select>
+                                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
+                                            <ChevronDown className="h-4 w-4" />
+                                        </div>
+                                    </div>
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-slate-700">Current Status</Label>
-                                    <select
-                                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 focus:bg-white transition-all h-10"
-                                        value={formData.status}
-                                        onChange={e => setFormData({ ...formData, status: e.target.value })}
-                                    >
-                                        <option value="Open">Open</option>
-                                        <option value="In Progress">In Progress</option>
-                                        <option value="Hearing Scheduled">Hearing Scheduled</option>
-                                        <option value="Closed">Closed</option>
-                                        <option value="Archived">Archived</option>
-                                    </select>
+                                    <div className="relative">
+                                        <select
+                                            className="w-full h-10 appearance-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 focus:bg-white transition-all cursor-pointer"
+                                            value={formData.status}
+                                            onChange={e => setFormData({ ...formData, status: e.target.value })}
+                                        >
+                                            <option value="Open">Open</option>
+                                            <option value="In Progress">In Progress</option>
+                                            <option value="Hearing Scheduled">Hearing Scheduled</option>
+                                            <option value="Closed">Closed</option>
+                                            <option value="Archived">Archived</option>
+                                        </select>
+                                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
+                                            <ChevronDown className="h-4 w-4" />
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
