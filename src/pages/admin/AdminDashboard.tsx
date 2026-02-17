@@ -7,6 +7,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { ClerkUser } from '../../types/clerk';
 import { cn } from '../../lib/utils';
+import { useFavicon } from '../../hooks/useFavicon';
 
 interface SupportRequest {
     id: number;
@@ -21,6 +22,7 @@ interface SupportRequest {
 }
 
 export function AdminDashboard() {
+    useFavicon('/admin-favicon.svg');
     const [requests, setRequests] = useState<ClerkUser[]>([]);
     const [activeClerks, setActiveClerks] = useState<ClerkUser[]>([]);
     const [supportTickets, setSupportTickets] = useState<SupportRequest[]>([]);

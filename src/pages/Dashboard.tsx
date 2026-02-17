@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Building, Calendar, Clock, FileText, Scale } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useFavicon } from '../hooks/useFavicon';
 
 export function Dashboard() {
+    useFavicon('/clerk-favicon.svg');
     const [activeCasesCount, setActiveCasesCount] = useState<number | string>('-');
     const [societiesCount, setSocietiesCount] = useState<number | string>('-');
 
