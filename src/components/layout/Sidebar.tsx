@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, FolderOpen, Users, FileText, LogOut, Briefcase, X, PanelLeft, LifeBuoy, Gavel, Scale } from 'lucide-react';
+import { LayoutDashboard, FolderOpen, Users, FileText, LogOut, Briefcase, X, PanelLeft, LifeBuoy, Gavel, Scale, CreditCard, Banknote } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../context/AuthContext';
 
@@ -10,6 +10,8 @@ const navItems = [
     { icon: FileText, label: 'Society Details', to: '/society-details' },
     { icon: Gavel, label: 'Interim Orders', to: '/interim-orders' },
     { icon: Scale, label: 'Judgements', to: '/judgments' },
+    { icon: CreditCard, label: 'Expenses', to: '/expenses' },
+    { icon: Banknote, label: 'Income', to: '/income' },
     { icon: LifeBuoy, label: 'Support', to: '/support' },
 ];
 

@@ -13,6 +13,7 @@ import { CaseCopies } from './pages/CaseCopies';
 import { SocietyDetails } from './pages/SocietyDetails';
 import { InterimOrders } from './pages/InterimOrders';
 import { Judgments } from './pages/Judgments';
+import { Transactions } from './pages/Transactions';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
     const { session, loading } = useAuth();
@@ -87,6 +88,8 @@ function App() {
                         <Route path="society-details" element={<SocietyDetails />} />
                         <Route path="interim-orders" element={<InterimOrders />} />
                         <Route path="judgments" element={<Judgments />} />
+                        <Route path="expenses" element={<Transactions type="expense" />} />
+                        <Route path="income" element={<Transactions type="income" />} />
                     </Route>
                 </Routes>
             </AuthProvider>

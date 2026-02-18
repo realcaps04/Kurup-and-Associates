@@ -56,14 +56,15 @@ export function Support() {
     }, [activeTab]);
 
     const fetchRequests = async () => {
-        if (!session?.user?.email) return;
+        const userEmail = session?.user?.email || JSON.parse(localStorage.getItem('clerk_session') || '{}')?.email;
+        if (!userEmail) return;
 
         setLoading(true);
         try {
             const { data, error } = await supabase
                 .from('support_requests')
                 .select('*')
-                .eq('user_email', session.user.email)
+                .eq('user_email', userEmail)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
