@@ -4,7 +4,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Label } from '../components/ui/Label';
 import { useAuth } from '../context/AuthContext';
-import { LifeBuoy, Plus, MessageSquare, Clock, CheckCircle, AlertCircle, Loader2, Send, Trash2, Eye, X, UserCheck } from 'lucide-react';
+import { LifeBuoy, Plus, MessageSquare, Clock, CheckCircle, AlertCircle, Loader2, Send, Trash2, Eye, X, UserCheck, Rocket } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface SupportRequest {
@@ -19,12 +19,22 @@ interface SupportRequest {
     admin_response?: string;
 }
 
+interface Release {
+    id: number;
+    version: string;
+    title: string;
+    description: string;
+    features: string[];
+    created_at: string;
+}
+
 export function Support() {
     const { session } = useAuth();
     const [loading, setLoading] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [requests, setRequests] = useState<SupportRequest[]>([]);
-    const [activeTab, setActiveTab] = useState<'new' | 'history'>('new');
+    const [releases, setReleases] = useState<Release[]>([]);
+    const [activeTab, setActiveTab] = useState<'new' | 'history' | 'releases'>('new');
     const [deleteId, setDeleteId] = useState<number | null>(null);
     const [selectedRequest, setSelectedRequest] = useState<SupportRequest | null>(null);
     const [clerkMap, setClerkMap] = useState<Record<string, string>>({});
@@ -40,40 +50,43 @@ export function Support() {
     useEffect(() => {
         if (activeTab === 'history') {
             fetchRequests();
+        } else if (activeTab === 'releases') {
+            fetchReleases();
         }
     }, [activeTab]);
 
     const fetchRequests = async () => {
+        if (!session?.user?.email) return;
+
         setLoading(true);
         try {
-            // Fetch requests
-            const { data: requestData, error: requestError } = await supabase
+            const { data, error } = await supabase
                 .from('support_requests')
+                .select('*')
+                .eq('user_email', session.user.email)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            setRequests(data || []);
+        } catch (err) {
+            console.error('Unexpected error fetching data:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchReleases = async () => {
+        setLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('releases')
                 .select('*')
                 .order('created_at', { ascending: false });
 
-            if (requestError) {
-                console.error('Error fetching requests:', requestError);
-            } else {
-                setRequests(requestData || []);
-            }
-
-            // Fetch clerks to map emails to names
-            const { data: clerks, error: clerkError } = await supabase
-                .from('clerk_users')
-                .select('email, full_name');
-
-            if (clerkError) {
-                console.error('Error fetching clerks:', clerkError);
-            } else if (clerks) {
-                const map: Record<string, string> = {};
-                clerks.forEach(c => {
-                    if (c.email) map[c.email] = c.full_name;
-                });
-                setClerkMap(map);
-            }
-        } catch (err) {
-            console.error('Unexpected error fetching data:', err);
+            if (error) throw error;
+            setReleases(data || []);
+        } catch (error) {
+            console.error('Error fetching releases:', error);
         } finally {
             setLoading(false);
         }
@@ -313,6 +326,18 @@ export function Support() {
                     <Clock className="h-4 w-4" />
                     Request History
                 </button>
+                <button
+                    onClick={() => setActiveTab('releases')}
+                    className={cn(
+                        "flex items-center gap-2 rounded-lg px-6 py-2.5 text-sm font-medium transition-all",
+                        activeTab === 'releases'
+                            ? "bg-white text-blue-600 shadow-sm"
+                            : "text-slate-500 hover:text-slate-900 hover:bg-slate-200/50"
+                    )}
+                >
+                    <Rocket className="h-4 w-4" />
+                    Latest Releases
+                </button>
             </div>
 
             {activeTab === 'new' ? (
@@ -382,7 +407,7 @@ export function Support() {
                         </div>
                     </form>
                 </div>
-            ) : (
+            ) : activeTab === 'history' ? (
                 <div className="space-y-4">
                     {loading ? (
                         <div className="text-center py-12">
@@ -487,6 +512,51 @@ export function Support() {
                                     ))}
                                 </tbody>
                             </table>
+                        </div>
+                    )}
+                </div>
+            ) : (
+                <div className="space-y-6 animate-fade-in">
+                    {releases.length > 0 ? (
+                        releases.map((release) => (
+                            <div key={release.id} className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm relative overflow-hidden mb-6">
+                                <div className="absolute top-0 right-0 p-4 opacity-5">
+                                    <Rocket className="h-32 w-32 text-blue-600" />
+                                </div>
+                                <div className="relative z-10">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold uppercase tracking-wider">{release.version}</span>
+                                        <span className="text-slate-400 text-sm">{new Date(release.created_at).toLocaleDateString()}</span>
+                                    </div>
+                                    <h3 className="text-xl font-bold text-slate-900 mb-2">{release.title}</h3>
+                                    <p className="text-slate-600 mb-6 leading-relaxed max-w-2xl">
+                                        {release.description}
+                                    </p>
+
+                                    {release.features && release.features.length > 0 && (
+                                        <div className="space-y-4">
+                                            <h4 className="font-semibold text-slate-900 flex items-center gap-2">
+                                                <span className="h-1.5 w-1.5 rounded-full bg-blue-600"></span>
+                                                What's New
+                                            </h4>
+                                            <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                {release.features.map((feature, i) => (
+                                                    <li key={i} className="flex items-center gap-2 text-sm text-slate-600">
+                                                        <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                                                        {feature}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ))
+                    ) : (
+                        <div className="flex flex-col items-center justify-center py-20 text-slate-500 bg-white rounded-2xl border border-slate-200 border-dashed">
+                            <Rocket className="h-12 w-12 text-slate-300 mb-4" />
+                            <h3 className="text-lg font-medium text-slate-900">No release notes</h3>
+                            <p className="text-sm max-w-sm text-center">There are no new release updates to display at this time.</p>
                         </div>
                     )}
                 </div>

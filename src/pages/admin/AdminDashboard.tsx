@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../../components/ui/Button';
 import {
-    Users, FileText, Search, Bell, LogOut, CheckCircle, Loader2, UserPlus, Clock, UserCheck, LifeBuoy, Eye, X, Send
+    Users, FileText, Search, Bell, LogOut, CheckCircle, Loader2, UserPlus, Clock, UserCheck, LifeBuoy, Eye, X, Send, Rocket, Plus, Trash2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ClerkUser } from '../../types/clerk';
@@ -21,15 +21,30 @@ interface SupportRequest {
     admin_response?: string;
 }
 
+interface Release {
+    id: number;
+    version: string;
+    title: string;
+    description: string;
+    features: string[]; // Start as JSON array in DB, handle appropriately in frontend
+    created_at: string;
+}
+
 export function AdminDashboard() {
     useFavicon('/admin-favicon.svg');
     const [requests, setRequests] = useState<ClerkUser[]>([]);
     const [activeClerks, setActiveClerks] = useState<ClerkUser[]>([]);
     const [supportTickets, setSupportTickets] = useState<SupportRequest[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'requests' | 'active_clerks' | 'support_requests'>('requests');
+    const [activeTab, setActiveTab] = useState<'requests' | 'active_clerks' | 'support_requests' | 'latest_releases'>('requests');
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [selectedTicket, setSelectedTicket] = useState<SupportRequest | null>(null);
+
+    // Release State
+    const [releases, setReleases] = useState<Release[]>([]);
+    const [showReleaseModal, setShowReleaseModal] = useState(false);
+    const [releaseForm, setReleaseForm] = useState({ version: '', title: '', description: '', features: '' });
+    const [releaseLoading, setReleaseLoading] = useState(false);
 
     // Reply state
     const [isReplying, setIsReplying] = useState(false);
@@ -120,6 +135,54 @@ export function AdminDashboard() {
         }
     };
 
+    // Fetch Releases
+    const fetchReleases = async () => {
+        setLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('releases')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            setReleases(data || []);
+        } catch (error) {
+            console.error('Error fetching releases:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Handle Publish Release
+    const handlePublishRelease = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setReleaseLoading(true);
+
+        try {
+            const featuresArray = releaseForm.features.split('\n').filter(f => f.trim());
+
+            const { error } = await supabase.from('releases').insert([{
+                version: releaseForm.version,
+                title: releaseForm.title,
+                description: releaseForm.description,
+                features: featuresArray // Supabase handles array -> jsonb conversion
+            }]);
+
+            if (error) throw error;
+
+            setShowReleaseModal(false);
+            setReleaseForm({ version: '', title: '', description: '', features: '' });
+            fetchReleases();
+            alert('Release published successfully!');
+
+        } catch (error) {
+            console.error('Error publishing release:', error);
+            alert('Failed to publish release');
+        } finally {
+            setReleaseLoading(false);
+        }
+    };
+
     // Handle Approve/Reject Clerk
     const handleAction = async (userId: string, action: 'approve' | 'reject') => {
         setActionLoading(userId);
@@ -175,12 +238,14 @@ export function AdminDashboard() {
         if (activeTab === 'requests') fetchRequests();
         else if (activeTab === 'active_clerks') fetchActiveClerks();
         else if (activeTab === 'support_requests') fetchSupportTickets();
+        else if (activeTab === 'latest_releases') fetchReleases();
     }, [activeTab]);
 
     const sidebarItems = [
         { id: 'requests', icon: UserPlus, label: 'Clerk Requests' },
         { id: 'active_clerks', icon: UserCheck, label: 'Active Clerks' },
         { id: 'support_requests', icon: LifeBuoy, label: 'Support Requests' },
+        { id: 'latest_releases', icon: Rocket, label: 'Latest Releases' },
     ];
 
     const getPriorityColor = (priority: string) => {
@@ -200,6 +265,23 @@ export function AdminDashboard() {
             case 'Resolved': return 'bg-green-50 text-green-700 border-green-200';
             case 'Closed': return 'bg-slate-50 text-slate-700 border-slate-200';
             default: return 'bg-slate-50 text-slate-700';
+        }
+    };
+
+    const incrementVersion = (latest: string) => {
+        if (!latest) return 'v1.0.0';
+        try {
+            const clean = latest.replace(/^v/, '');
+            const parts = clean.split('.');
+            if (parts.length < 3) return 'v1.0.0';
+
+            const patch = parseInt(parts[2], 10);
+            if (isNaN(patch)) return 'v1.0.0';
+
+            parts[2] = (patch + 1).toString();
+            return 'v' + parts.join('.');
+        } catch (e) {
+            return 'v1.0.0';
         }
     };
 
@@ -535,6 +617,68 @@ export function AdminDashboard() {
                         </div>
                     </div>
                 )}
+
+                {/* Latest Releases Tab */}
+                {activeTab === 'latest_releases' && (
+                    <div className="space-y-6 animate-fade-in">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h1 className="text-2xl font-bold text-slate-900">Latest Releases</h1>
+                                <p className="text-slate-500 mt-1">Manage and publish system updates and changelogs.</p>
+                            </div>
+                            <Button
+                                onClick={() => {
+                                    const latest = releases.length > 0 ? releases[0].version : 'v0.0.0';
+                                    const next = incrementVersion(latest);
+                                    setReleaseForm(prev => ({ ...prev, version: next }));
+                                    setShowReleaseModal(true);
+                                }}
+                                className="gap-2 bg-slate-900 text-white"
+                            >
+                                <Plus className="h-4 w-4" />
+                                Publish New Release
+                            </Button>
+                        </div>
+
+                        <div className="space-y-4">
+                            {releases.map((release) => (
+                                <div key={release.id} className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="flex items-center gap-3">
+                                            <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold uppercase tracking-wider">{release.version}</span>
+                                            <span className="text-slate-400 text-sm">{new Date(release.created_at).toLocaleDateString()}</span>
+                                        </div>
+                                    </div>
+                                    <h3 className="text-lg font-bold text-slate-900 mb-2">{release.title}</h3>
+                                    <p className="text-slate-600 mb-4">{release.description}</p>
+                                    {release.features && release.features.length > 0 && (
+                                        <div className="bg-slate-50 rounded-lg p-4">
+                                            <h4 className="text-xs font-semibold text-slate-900 uppercase tracking-wider mb-2">Features</h4>
+                                            <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                {release.features.map((feature, i) => (
+                                                    <li key={i} className="flex items-center gap-2 text-sm text-slate-600">
+                                                        <CheckCircle className="h-3 w-3 text-green-500" />
+                                                        {feature}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+
+                            {releases.length === 0 && (
+                                <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 border-dashed">
+                                    <div className="mx-auto h-12 w-12 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                                        <Rocket className="h-6 w-6 text-slate-300" />
+                                    </div>
+                                    <h3 className="text-lg font-medium text-slate-900">No Releases Published</h3>
+                                    <p className="text-slate-500 mt-1">Start by publishing the first release note.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
             </main>
 
             {/* Ticket Detail Modal */}
@@ -670,6 +814,99 @@ export function AdminDashboard() {
                                 </Button>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* New Release Modal */}
+            {showReleaseModal && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 ring-1 ring-white/20">
+                        {/* Header with Gradient */}
+                        <div className="p-6 bg-gradient-to-br from-slate-900 to-slate-800 text-white flex items-center justify-between relative overflow-hidden">
+                            <div className="relative z-10 flex items-center gap-3">
+                                <div className="h-10 w-10 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                                    <Rocket className="h-5 w-5 text-blue-200" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold">Publish Release</h3>
+                                    <p className="text-blue-200 text-xs mt-0.5">Deploy new features to users</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowReleaseModal(false)} className="relative z-10 p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handlePublishRelease} className="p-6 space-y-5">
+                            <div className="grid grid-cols-3 gap-5">
+                                <div className="col-span-1">
+                                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Version</label>
+                                    <div className="relative group">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <span className="text-slate-400 text-sm font-mono">v</span>
+                                        </div>
+                                        <input
+                                            required
+                                            type="text"
+                                            className="w-full pl-7 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all group-hover:bg-white"
+                                            value={releaseForm.version.replace(/^v/, '')}
+                                            onChange={e => setReleaseForm({ ...releaseForm, version: 'v' + e.target.value.replace(/^v/, '') })}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Title</label>
+                                    <input
+                                        required
+                                        type="text"
+                                        placeholder="e.g. Major Update"
+                                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white"
+                                        value={releaseForm.title}
+                                        onChange={e => setReleaseForm({ ...releaseForm, title: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Summary</label>
+                                <textarea
+                                    required
+                                    rows={2}
+                                    placeholder="Brief overview of what's changed..."
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white resize-none"
+                                    value={releaseForm.description}
+                                    onChange={e => setReleaseForm({ ...releaseForm, description: e.target.value })}
+                                />
+                            </div>
+
+                            <div>
+                                <div className="flex items-center justify-between mb-1.5 ml-1">
+                                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider">Changelog Features</label>
+                                    <span className="text-[10px] text-slate-400 uppercase tracking-wider">One per line</span>
+                                </div>
+                                <div className="relative">
+                                    <textarea
+                                        required
+                                        rows={5}
+                                        placeholder="• Added new dashboard widgets&#10;• Fixed login session timeout&#10;• Improved performance"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white"
+                                        value={releaseForm.features}
+                                        onChange={e => setReleaseForm({ ...releaseForm, features: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                                <Button type="button" variant="outline" onClick={() => setShowReleaseModal(false)} className="h-11 px-6 rounded-xl border-slate-200 hover:bg-slate-50 text-slate-600">
+                                    Cancel
+                                </Button>
+                                <Button type="submit" disabled={releaseLoading} className="h-11 px-6 rounded-xl bg-slate-900 text-white shadow-lg shadow-slate-900/20 hover:bg-slate-800 transition-transform active:scale-95">
+                                    {releaseLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Rocket className="h-4 w-4 mr-2" />}
+                                    Publish Now
+                                </Button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}
