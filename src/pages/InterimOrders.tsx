@@ -97,12 +97,12 @@ export function InterimOrders() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-slate-900">Interim Orders</h2>
-                    <p className="text-slate-500 mt-1">Management of interim orders and hearing dates.</p>
+                    <h2 className="text-2xl font-bold tracking-tight text-slate-900">Interim Orders</h2>
+                    <p className="text-sm text-slate-500 mt-1">Management of interim orders and hearing dates.</p>
                 </div>
                 <Button onClick={() => setShowAddModal(true)} className="bg-slate-900 hover:bg-slate-800 text-white">
                     <Plus className="mr-2 h-4 w-4" />
-                    Add New Order
+                    New Interim
                 </Button>
             </div>
 

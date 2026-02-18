@@ -27,6 +27,7 @@ export function CaseCopies() {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [caseNameOptions, setCaseNameOptions] = useState<string[]>([]);
+    const [docTypeOptions, setDocTypeOptions] = useState<string[]>([]);
     const [formData, setFormData] = useState({
         case_name: '',
         case_no: '',
@@ -35,10 +36,32 @@ export function CaseCopies() {
         date: new Date().toISOString().split('T')[0]
     });
 
+    // ... inside component ...
+
     useEffect(() => {
         fetchCopies();
         fetchCaseNames();
+        fetchDocTypes();
     }, []);
+
+    const fetchDocTypes = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('case_copies')
+                .select('doctype');
+
+            if (data) {
+                const uniqueTypes = new Set(data.map(item => item.doctype).filter(Boolean));
+                // Add common defaults just in case
+                ['IA', 'Vakalathu', 'Counter', 'Filing', 'Notice', 'Impleading', 'MOA'].forEach(t => uniqueTypes.add(t));
+                setDocTypeOptions(Array.from(uniqueTypes).sort());
+            }
+        } catch (error) {
+            console.error('Error fetching doc types:', error);
+        }
+    };
+
+
 
     const fetchCaseNames = async () => {
         try {
@@ -365,26 +388,35 @@ export function CaseCopies() {
 
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-slate-700">Document Type <span className="text-red-500">*</span></label>
-                                    <Input
-                                        required
-                                        placeholder="e.g. Judgment, Vakalathu, Filing..."
-                                        value={formData.doctype}
-                                        onChange={e => setFormData({ ...formData, doctype: e.target.value })}
-                                        className="bg-slate-50"
-                                    />
+                                    <div className="relative">
+                                        <select
+                                            required
+                                            className={`w-full h-10 appearance-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 focus:bg-white transition-all cursor-pointer ${formData.doctype ? 'text-slate-900 font-medium' : 'text-slate-500'}`}
+                                            value={formData.doctype}
+                                            onChange={e => setFormData({ ...formData, doctype: e.target.value })}
+                                        >
+                                            <option value="" disabled className="text-slate-400">Select Document Type</option>
+                                            {docTypeOptions.map(type => (
+                                                <option key={type} value={type} className="text-slate-900 py-2">{type}</option>
+                                            ))}
+                                        </select>
+                                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
+                                            <ChevronDown className="h-4 w-4" />
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-slate-700">Date <span className="text-red-500">*</span></label>
-                                    <div className="relative">
+                                    <div className="relative group">
                                         <Input
                                             required
                                             type="date"
                                             value={formData.date}
                                             onChange={e => setFormData({ ...formData, date: e.target.value })}
-                                            className="bg-slate-50 pl-10"
+                                            className="bg-slate-50 pl-10 hover:bg-white focus:bg-white transition-colors cursor-pointer"
                                         />
-                                        <Calendar className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                                        <Calendar className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-500 group-hover:text-blue-600 transition-colors" />
                                     </div>
                                 </div>
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import { Building, Calendar, Clock, FileText, Scale } from 'lucide-react';
+import { Building, Calendar, Gavel, Scale } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useFavicon } from '../hooks/useFavicon';
 
@@ -8,6 +8,8 @@ export function Dashboard() {
     useFavicon('/clerk-favicon.svg');
     const [activeCasesCount, setActiveCasesCount] = useState<number | string>('-');
     const [societiesCount, setSocietiesCount] = useState<number | string>('-');
+    const [upcomingHearingsCount, setUpcomingHearingsCount] = useState<number | string>('-');
+    const [judgmentsCount, setJudgmentsCount] = useState<number | string>('-');
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -34,7 +36,6 @@ export function Dashboard() {
                     console.error('Error fetching societies:', societyError);
                     setSocietiesCount('0');
                 } else if (societyData) {
-                    // Filter out null/empty and get unique count
                     const uniqueSocieties = new Set(
                         societyData
                             .map(item => item.society)
@@ -43,10 +44,45 @@ export function Dashboard() {
                     setSocietiesCount(uniqueSocieties.size);
                 }
 
+                // Fetch Upcoming Hearings (Next 14 Days)
+                const today = new Date();
+                const endDate = new Date();
+                endDate.setDate(today.getDate() + 14);
+
+                const todayStr = today.toISOString().split('T')[0];
+                const endDateStr = endDate.toISOString().split('T')[0];
+
+                const { count: hearingsCount, error: hearingsError } = await supabase
+                    .from('interim_orders')
+                    .select('*', { count: 'exact', head: true })
+                    .gte('next_date', todayStr)
+                    .lte('next_date', endDateStr);
+
+                if (hearingsError) {
+                    console.error('Error fetching hearings:', hearingsError);
+                    setUpcomingHearingsCount('0');
+                } else {
+                    setUpcomingHearingsCount(hearingsCount || 0);
+                }
+
+                // Fetch Judgments count
+                const { count: judgCount, error: judgError } = await supabase
+                    .from('judgments')
+                    .select('*', { count: 'exact', head: true });
+
+                if (judgError) {
+                    console.error('Error fetching judgments:', judgError);
+                    setJudgmentsCount('0');
+                } else {
+                    setJudgmentsCount(judgCount || 0);
+                }
+
             } catch (error) {
                 console.error('Error in fetchStats:', error);
                 setActiveCasesCount('0');
                 setSocietiesCount('0');
+                setUpcomingHearingsCount('0');
+                setJudgmentsCount('0');
             }
         };
 
@@ -55,9 +91,9 @@ export function Dashboard() {
 
     const stats = [
         { label: 'Active Cases', value: activeCasesCount.toString(), icon: Scale, change: activeCasesCount === '-' ? 'Loading...' : `${activeCasesCount} active cases` },
-        { label: 'Society Details', value: societiesCount.toString(), icon: Building, change: societiesCount === '-' ? 'Loading...' : `${societiesCount} societies registered` },
-        { label: 'Pending Documents', value: '0', icon: FileText, change: 'All caught up' },
-        { label: 'Tasks Due', value: '0', icon: Clock, change: 'No tasks pending' },
+        { label: 'Total Judgments', value: judgmentsCount.toString(), icon: Gavel, change: 'Recorded judgments' },
+        { label: 'Upcoming Hearings', value: upcomingHearingsCount.toString(), icon: Calendar, change: 'Next 14 days' },
+        { label: 'Societies Active', value: societiesCount.toString(), icon: Building, change: 'Registered societies' },
     ];
 
 
